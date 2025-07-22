@@ -1,0 +1,20 @@
+meta {
+  name: update-expense
+  type: http
+  seq: 4
+}
+
+patch {
+  url: http://localhost:3001/api/expenses/bbd9981c-b1c3-47db-9d51-cf2a4f282f87
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "label": "Groceries",
+    "value": 50,
+    "date": "2025-07-22T15:00:00Z"
+  }
+  
+}
