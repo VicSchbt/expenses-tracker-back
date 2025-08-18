@@ -7,5 +7,10 @@ meta {
 get {
   url: http://localhost:3001/api/expenses
   body: none
-  auth: inherit
+  auth: basic
+}
+
+auth:basic {
+  username: dev@example.com
+  password: {{password}}
 }

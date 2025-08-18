@@ -7,18 +7,28 @@ meta {
 post {
   url: http://localhost:3001/api/expenses
   body: json
-  auth: inherit
+  auth: basic
+}
+
+params:query {
+  : 
 }
 
 headers {
   Content-Type: application/json
+  ~Authorization: Basic ZGV2QGV4YW1wbGUuY29tOnBhc3N3b3JkMTIz
+}
+
+auth:basic {
+  username: dev@example.com
+  password: {{password}}
 }
 
 body:json {
   {
     "label": "Coffee",
     "value": 3.5,
-    "date": "2025-07-22T08:00:00.000Z"
+    "date": "2025-08-17"
   }
   
 }

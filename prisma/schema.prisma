@@ -7,6 +7,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id       String    @id @default(uuid())
+  email    String    @unique
+  password String
+  expenses Expense[]
+}
+
 model Expense {
   id         String   @id @default(uuid())
   label      String
@@ -15,7 +22,9 @@ model Expense {
   categoryId String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  userId     String
 
+  user       User     @relation(fields: [userId], references: [id])
   category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 }
 
