@@ -8,10 +8,11 @@ datasource db {
 }
 
 model User {
-  id       String    @id @default(uuid())
-  email    String    @unique
-  password String
-  expenses Expense[]
+  id         String     @id @default(uuid())
+  email      String     @unique
+  password   String
+  expenses   Expense[]
+  categories Category[]
 }
 
 model Expense {
@@ -24,12 +25,20 @@ model Expense {
   updatedAt  DateTime @updatedAt
   userId     String
 
-  user       User     @relation(fields: [userId], references: [id])
-  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  user     User      @relation(fields: [userId], references: [id])
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([categoryId])
 }
 
 model Category {
   id       String    @id @default(uuid())
   name     String
+  userId   String
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   expenses Expense[]
+
+  @@unique([userId, name])
+  @@index([userId])
 }

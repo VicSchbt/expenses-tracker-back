@@ -1,0 +1,30 @@
+meta {
+  name: create_category
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/categories
+  body: json
+  auth: basic
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:basic {
+  username: {{user}}
+  password: {{password}}
+}
+
+body:json {
+  {
+    "name": "Rent"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

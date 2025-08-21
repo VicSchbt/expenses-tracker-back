@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 
 import expenseRoutes from "./routes/expenses";
+import categoryRoutes from "./routes/category.routes";
 
 dotenv.config();
 
@@ -19,5 +20,6 @@ app.use(
 app.use(express.json());
 
 app.use("/api/expenses", expenseRoutes);
+app.use("/api/categories", categoryRoutes);
 
 export default app;

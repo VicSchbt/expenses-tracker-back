@@ -1,0 +1,33 @@
+meta {
+  name: list-categories
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/categories
+  body: none
+  auth: basic
+}
+
+headers {
+  : 
+}
+
+auth:basic {
+  username: {{user}}
+  password: {{password}}
+}
+
+tests {
+  test("GET /categories should return 200", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("Response should be an array", function() {
+    expect(res.getBody()).to.be.a('array');
+  });
+}
+
+settings {
+  encodeUrl: true
+}
