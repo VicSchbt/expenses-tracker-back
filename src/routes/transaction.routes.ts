@@ -1,14 +1,14 @@
 import { Router } from "express";
 import {
-  createExpenseController,
-  getAllExpensesController,
-  getExpenseById,
-  deleteExpense,
-  updateExpense,
-} from "../controllers/expenses.controller";
+  createTransaction,
+  getAllTransactions,
+  getTransactionById,
+  deleteTransaction,
+  updateTransaction,
+} from "../controllers/transaction/transaction.controller";
 import { basicAuth } from "../middleware/basicAuth";
 import { z } from "zod";
-import { payloadSchema as createExpenseBodySchema } from "../controllers/createExpense";
+import { payloadSchema as createTransactionBodySchema } from "../controllers/transaction/transaction.controller";
 const router = Router();
 
 router.use(basicAuth);
@@ -17,7 +17,7 @@ router.post(
   "/",
   async (req, res, next) => {
     try {
-      const parsed = createExpenseBodySchema.parse(req.body);
+      const parsed = createTransactionBodySchema.parse(req.body);
       req.body = parsed; // overwrite with clean data
       next();
     } catch (err) {
@@ -29,11 +29,11 @@ router.post(
       next(err);
     }
   },
-  createExpenseController
+  createTransaction
 );
-router.get("/", getAllExpensesController);
-router.get("/:id", getExpenseById);
-router.delete("/:id", deleteExpense);
-router.patch("/:id", updateExpense);
+router.get("/", getAllTransactions);
+router.get("/:id", getTransactionById);
+router.delete("/:id", deleteTransaction);
+router.patch("/:id", updateTransaction);
 
 export default router;

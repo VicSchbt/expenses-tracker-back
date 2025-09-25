@@ -11,11 +11,11 @@ model User {
   id         String     @id @default(uuid())
   email      String     @unique
   password   String
-  expenses   Expense[]
+  transactions   Transaction[]
   categories Category[]
 }
 
-model Expense {
+model Transaction {
   id         String   @id @default(uuid())
   label      String
   value      Float
@@ -37,8 +37,15 @@ model Category {
   name     String
   userId   String
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expenses Expense[]
+  transactions Transaction[]
 
   @@unique([userId, name])
   @@index([userId])
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  BILL
+  SAVING
 }

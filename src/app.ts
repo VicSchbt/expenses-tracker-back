@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 
-import expenseRoutes from "./routes/expenses";
+import transactionRoutes from "./routes/transaction.routes";
 import categoryRoutes from "./routes/category.routes";
 
 dotenv.config();
@@ -19,7 +19,7 @@ app.use(
 );
 app.use(express.json());
 
-app.use("/api/expenses", expenseRoutes);
+app.use("/api/transactions", transactionRoutes);
 app.use("/api/categories", categoryRoutes);
 
 export default app;

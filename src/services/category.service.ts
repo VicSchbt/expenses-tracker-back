@@ -24,7 +24,7 @@ export async function renameCategory(userId: string, id: string, name: string) {
       where: { id },
       data: { name },
     })
-    .catch((err) => {
+    .catch((err: any) => {
       // if the id doesn't belong to the user, update will still succeed unless we check first
       // so we’ll do an ownership guard below instead:
       throw err;
