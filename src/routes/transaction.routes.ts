@@ -8,7 +8,7 @@ import {
 } from "../controllers/transaction/transaction.controller";
 import { basicAuth } from "../middleware/basicAuth";
 import { z } from "zod";
-import { payloadSchema as createTransactionBodySchema } from "../controllers/transaction/transaction.controller";
+import { payloadSchema as createTransactionBodySchema } from "../validators/transaction.schema";
 const router = Router();
 
 router.use(basicAuth);
