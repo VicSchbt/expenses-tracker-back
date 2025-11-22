@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+enum TransactionType {
+  EXPENSE
+  INCOME
+  BILL
+  SAVINGS
+}
+
+enum Recurrence {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  categories   Category[]
+  goals        SavingsGoal[]
+  transactions Transaction[]
+}
+
+model Category {
+  id        String        @id @default(cuid())
+  user      User          @relation(fields: [userId], references: [id])
+  userId    String
+  name      String
+  color     String?
+  icon      String?
+
+  transactions Transaction[]
+}
+
+model SavingsGoal {
+  id            String        @id @default(cuid())
+  user          User          @relation(fields: [userId], references: [id])
+  userId        String
+
+  name          String
+  targetAmount  Decimal
+  currentAmount Decimal       @default(0)
+  dueDate       DateTime?
+
+  createdAt     DateTime      @default(now())
+
+  transactions  Transaction[]
+}
+
+model Transaction {
+  id          String           @id @default(cuid())
+  user        User             @relation(fields: [userId], references: [id])
+  userId      String
+
+  label       String
+  date        DateTime
+  value       Decimal
+  type        TransactionType
+
+  category    Category?        @relation(fields: [categoryId], references: [id])
+  categoryId  String?
+
+  goal        SavingsGoal?     @relation(fields: [goalId], references: [id])
+  goalId      String?
+
+  recurrence  Recurrence?
+  isPaid      Boolean?         @default(false)
+  dueDate     DateTime?
+
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
