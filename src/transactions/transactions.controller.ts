@@ -1,9 +1,12 @@
 import {
   Controller,
   Post,
+  Get,
   Body,
+  Query,
   UseGuards,
   Request,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -20,6 +23,7 @@ import { CreateSavingDto } from './models/create-saving.dto';
 import { CreateExpenseDto } from './models/create-expense.dto';
 import { CreateRefundDto } from './models/create-refund.dto';
 import { Transaction } from './models/transaction.type';
+import { MonthlyBalance } from './models/monthly-balance.type';
 
 @ApiTags('transactions')
 @Controller('transactions')
@@ -125,6 +129,36 @@ export class TransactionsController {
     @Body() createRefundDto: CreateRefundDto,
   ): Promise<Transaction> {
     return this.transactionsService.createRefund(req.user.id, createRefundDto);
+  }
+
+  @Get('balance/monthly')
+  @ApiOperation({
+    summary: 'Get monthly balance',
+    description:
+      'Calculates the current balance for a given month. Formula: Income + Refunds - Bills - Savings - Subscriptions - Expenses',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Monthly balance successfully calculated',
+    type: MonthlyBalance,
+  })
+  @ApiResponse({ status: 400, description: 'Bad request (invalid month)' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getMonthlyBalance(
+    @Request() req: { user: { id: string; email: string } },
+    @Query('year') year: string,
+    @Query('month') month: string,
+  ): Promise<MonthlyBalance> {
+    const yearNumber = parseInt(year, 10);
+    const monthNumber = parseInt(month, 10);
+    if (isNaN(yearNumber) || isNaN(monthNumber)) {
+      throw new BadRequestException('Year and month must be valid numbers');
+    }
+    return this.transactionsService.getMonthlyBalance(
+      req.user.id,
+      yearNumber,
+      monthNumber,
+    );
   }
 
   @Post('admin/test')

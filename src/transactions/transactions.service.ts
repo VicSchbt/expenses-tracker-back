@@ -13,6 +13,7 @@ import { CreateSavingDto } from './models/create-saving.dto';
 import { CreateExpenseDto } from './models/create-expense.dto';
 import { CreateRefundDto } from './models/create-refund.dto';
 import { Transaction } from './models/transaction.type';
+import { MonthlyBalance } from './models/monthly-balance.type';
 
 @Injectable()
 export class TransactionsService {
@@ -156,6 +157,102 @@ export class TransactionsService {
     if (category.userId !== userId) {
       throw new ForbiddenException('You do not have access to this category');
     }
+  }
+
+  /**
+   * Calculates the monthly balance for a given user and month.
+   * Formula: Income + Refunds - Bills - Savings - Subscriptions - Expenses
+   * Bills, Savings, and Subscriptions are considered "planned" for the month.
+   * Expenses and Refunds are actual transactions that occurred.
+   */
+  async getMonthlyBalance(
+    userId: string,
+    year: number,
+    month: number,
+  ): Promise<MonthlyBalance> {
+    if (month < 1 || month > 12) {
+      throw new BadRequestException('Month must be between 1 and 12');
+    }
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+    const transactions = await this.prisma.transaction.findMany({
+      where: {
+        userId,
+        OR: [
+          { date: { gte: startDate, lte: endDate } },
+          { dueDate: { gte: startDate, lte: endDate } },
+        ],
+      },
+    });
+    let totalIncome = 0;
+    let totalBills = 0;
+    let totalSavings = 0;
+    let totalSubscriptions = 0;
+    let totalExpenses = 0;
+    let totalRefunds = 0;
+    transactions.forEach((transaction) => {
+      const value = Number(transaction.value);
+      const transactionDate = transaction.date;
+      const dueDate = transaction.dueDate;
+      const isInMonth = this.isDateInMonth(transactionDate, year, month);
+      const isDueInMonth = dueDate
+        ? this.isDateInMonth(dueDate, year, month)
+        : false;
+      switch (transaction.type) {
+        case TransactionType.INCOME:
+          if (isInMonth) {
+            totalIncome += value;
+          }
+          break;
+        case TransactionType.BILL:
+          if (isInMonth || isDueInMonth) {
+            totalBills += value;
+          }
+          break;
+        case TransactionType.SAVINGS:
+          if (isInMonth || isDueInMonth) {
+            totalSavings += value;
+          }
+          break;
+        case TransactionType.SUBSCRIPTION:
+          if (isInMonth || isDueInMonth) {
+            totalSubscriptions += value;
+          }
+          break;
+        case TransactionType.EXPENSE:
+          if (isInMonth) {
+            totalExpenses += value;
+          }
+          break;
+        case TransactionType.REFUND:
+          if (isInMonth) {
+            totalRefunds += value;
+          }
+          break;
+      }
+    });
+    const balance =
+      totalIncome +
+      totalRefunds -
+      totalBills -
+      totalSavings -
+      totalSubscriptions -
+      totalExpenses;
+    return {
+      year,
+      month,
+      totalIncome,
+      totalBills,
+      totalSavings,
+      totalSubscriptions,
+      totalExpenses,
+      totalRefunds,
+      balance,
+    };
+  }
+
+  private isDateInMonth(date: Date, year: number, month: number): boolean {
+    return date.getFullYear() === year && date.getMonth() === month - 1;
   }
 
   private mapToTransactionType(transaction: {
