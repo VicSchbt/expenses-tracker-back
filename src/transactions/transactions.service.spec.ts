@@ -1,0 +1,526 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import {
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
+import { TransactionsService } from './transactions.service';
+import { PrismaService } from 'prisma/prisma.service';
+import { TransactionType, Recurrence } from '@prisma/client';
+import { CreateIncomeDto } from './models/create-income.dto';
+import { CreateBillDto } from './models/create-bill.dto';
+import { CreateSubscriptionDto } from './models/create-subscription.dto';
+import { CreateSavingDto } from './models/create-saving.dto';
+import { CreateExpenseDto } from './models/create-expense.dto';
+import { CreateRefundDto } from './models/create-refund.dto';
+
+describe('TransactionsService', () => {
+  let service: TransactionsService;
+  let prismaService: jest.Mocked<PrismaService>;
+
+  const mockUserId = 'user-id';
+  const mockOtherUserId = 'other-user-id';
+  const mockCategoryId = 'category-id';
+  const mockGoalId = 'goal-id';
+  const mockTransactionId = 'transaction-id';
+
+  const mockDate = '2024-01-15T10:00:00.000Z';
+
+  const mockCategory = {
+    id: mockCategoryId,
+    userId: mockUserId,
+    label: 'Test Category',
+    icon: 'test-icon',
+    color: '#FF0000',
+  };
+
+  const mockSavingsGoal = {
+    id: mockGoalId,
+    userId: mockUserId,
+    name: 'Vacation',
+    targetAmount: 5000,
+    currentAmount: 1000,
+    dueDate: new Date('2024-12-31'),
+    createdAt: new Date(),
+  };
+
+  const mockTransaction = {
+    id: mockTransactionId,
+    userId: mockUserId,
+    label: 'Test Transaction',
+    date: new Date(mockDate),
+    value: 100,
+    type: TransactionType.EXPENSE,
+    categoryId: null,
+    goalId: null,
+    recurrence: null,
+    isPaid: null,
+    dueDate: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  beforeEach(async () => {
+    const mockPrismaService = {
+      transaction: {
+        create: jest.fn(),
+      },
+      category: {
+        findUnique: jest.fn(),
+      },
+      savingsGoal: {
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      },
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        TransactionsService,
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
+        },
+      ],
+    }).compile();
+
+    service = module.get<TransactionsService>(TransactionsService);
+    prismaService = module.get(PrismaService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('createIncome', () => {
+    const inputCreateIncomeDto: CreateIncomeDto = {
+      label: 'Salary',
+      date: mockDate,
+      value: 5000,
+      recurrence: Recurrence.MONTHLY,
+    };
+
+    it('should create an income transaction successfully with recurrence', async () => {
+      const expectedTransaction = {
+        ...mockTransaction,
+        label: inputCreateIncomeDto.label,
+        value: inputCreateIncomeDto.value,
+        type: TransactionType.INCOME,
+        recurrence: inputCreateIncomeDto.recurrence,
+      };
+      (prismaService.transaction.create as jest.Mock).mockResolvedValue(
+        expectedTransaction,
+      );
+
+      const actualResult = await service.createIncome(
+        mockUserId,
+        inputCreateIncomeDto,
+      );
+
+      expect(actualResult).toEqual({
+        id: mockTransactionId,
+        userId: mockUserId,
+        label: inputCreateIncomeDto.label,
+        date: new Date(mockDate),
+        value: inputCreateIncomeDto.value,
+        type: TransactionType.INCOME,
+        categoryId: null,
+        goalId: null,
+        recurrence: inputCreateIncomeDto.recurrence,
+        isPaid: null,
+        dueDate: null,
+        createdAt: expectedTransaction.createdAt,
+        updatedAt: expectedTransaction.updatedAt,
+      });
+      expect(prismaService.transaction.create).toHaveBeenCalledWith({
+        data: {
+          userId: mockUserId,
+          label: inputCreateIncomeDto.label,
+          date: new Date(inputCreateIncomeDto.date),
+          value: inputCreateIncomeDto.value,
+          type: TransactionType.INCOME,
+          recurrence: inputCreateIncomeDto.recurrence,
+        },
+      });
+    });
+
+    it('should create an income transaction successfully without recurrence', async () => {
+      const inputDtoWithoutRecurrence: CreateIncomeDto = {
+        label: 'Bonus',
+        date: mockDate,
+        value: 1000,
+      };
+      const expectedTransaction = {
+        ...mockTransaction,
+        label: inputDtoWithoutRecurrence.label,
+        value: inputDtoWithoutRecurrence.value,
+        type: TransactionType.INCOME,
+        recurrence: null,
+      };
+      (prismaService.transaction.create as jest.Mock).mockResolvedValue(
+        expectedTransaction,
+      );
+
+      const actualResult = await service.createIncome(
+        mockUserId,
+        inputDtoWithoutRecurrence,
+      );
+
+      expect(actualResult.type).toBe(TransactionType.INCOME);
+      expect(actualResult.recurrence).toBeNull();
+      expect(prismaService.transaction.create).toHaveBeenCalledWith({
+        data: {
+          userId: mockUserId,
+          label: inputDtoWithoutRecurrence.label,
+          date: new Date(inputDtoWithoutRecurrence.date),
+          value: inputDtoWithoutRecurrence.value,
+          type: TransactionType.INCOME,
+          recurrence: undefined,
+        },
+      });
+    });
+  });
+
+  describe('createBill', () => {
+    const inputCreateBillDto: CreateBillDto = {
+      label: 'Electricity Bill',
+      date: mockDate,
+      value: 150,
+      recurrence: Recurrence.MONTHLY,
+    };
+
+    it('should create a bill transaction successfully', async () => {
+      const expectedTransaction = {
+        ...mockTransaction,
+        label: inputCreateBillDto.label,
+        value: inputCreateBillDto.value,
+        type: TransactionType.BILL,
+        recurrence: inputCreateBillDto.recurrence,
+      };
+      (prismaService.transaction.create as jest.Mock).mockResolvedValue(
+        expectedTransaction,
+      );
+
+      const actualResult = await service.createBill(
+        mockUserId,
+        inputCreateBillDto,
+      );
+
+      expect(actualResult.type).toBe(TransactionType.BILL);
+      expect(prismaService.transaction.create).toHaveBeenCalledWith({
+        data: {
+          userId: mockUserId,
+          label: inputCreateBillDto.label,
+          date: new Date(inputCreateBillDto.date),
+          value: inputCreateBillDto.value,
+          type: TransactionType.BILL,
+          recurrence: inputCreateBillDto.recurrence,
+        },
+      });
+    });
+  });
+
+  describe('createSubscription', () => {
+    const inputCreateSubscriptionDto: CreateSubscriptionDto = {
+      label: 'Netflix',
+      date: mockDate,
+      value: 15,
+      recurrence: Recurrence.MONTHLY,
+    };
+
+    it('should create a subscription transaction successfully', async () => {
+      const expectedTransaction = {
+        ...mockTransaction,
+        label: inputCreateSubscriptionDto.label,
+        value: inputCreateSubscriptionDto.value,
+        type: TransactionType.SUBSCRIPTION,
+        recurrence: inputCreateSubscriptionDto.recurrence,
+      };
+      (prismaService.transaction.create as jest.Mock).mockResolvedValue(
+        expectedTransaction,
+      );
+
+      const actualResult = await service.createSubscription(
+        mockUserId,
+        inputCreateSubscriptionDto,
+      );
+
+      expect(actualResult.type).toBe(TransactionType.SUBSCRIPTION);
+      expect(prismaService.transaction.create).toHaveBeenCalledWith({
+        data: {
+          userId: mockUserId,
+          label: inputCreateSubscriptionDto.label,
+          date: new Date(inputCreateSubscriptionDto.date),
+          value: inputCreateSubscriptionDto.value,
+          type: TransactionType.SUBSCRIPTION,
+          recurrence: inputCreateSubscriptionDto.recurrence,
+        },
+      });
+    });
+  });
+
+  describe('createSaving', () => {
+    const inputCreateSavingDto: CreateSavingDto = {
+      goalId: mockGoalId,
+      value: 500,
+      date: mockDate,
+    };
+
+    it('should create a saving transaction and update savings goal successfully', async () => {
+      const expectedTransaction = {
+        ...mockTransaction,
+        label: `Saving to ${mockSavingsGoal.name}`,
+        value: inputCreateSavingDto.value,
+        type: TransactionType.SAVINGS,
+        goalId: mockGoalId,
+      };
+      const updatedGoal = {
+        ...mockSavingsGoal,
+        currentAmount: mockSavingsGoal.currentAmount + inputCreateSavingDto.value,
+      };
+      (prismaService.savingsGoal.findUnique as jest.Mock).mockResolvedValue(
+        mockSavingsGoal,
+      );
+      (prismaService.transaction.create as jest.Mock).mockResolvedValue(
+        expectedTransaction,
+      );
+      (prismaService.savingsGoal.update as jest.Mock).mockResolvedValue(
+        updatedGoal,
+      );
+
+      const actualResult = await service.createSaving(
+        mockUserId,
+        inputCreateSavingDto,
+      );
+
+      expect(actualResult.type).toBe(TransactionType.SAVINGS);
+      expect(actualResult.goalId).toBe(mockGoalId);
+      expect(prismaService.savingsGoal.findUnique).toHaveBeenCalledWith({
+        where: { id: mockGoalId },
+      });
+      expect(prismaService.transaction.create).toHaveBeenCalledWith({
+        data: {
+          userId: mockUserId,
+          label: `Saving to ${mockSavingsGoal.name}`,
+          date: new Date(inputCreateSavingDto.date),
+          value: inputCreateSavingDto.value,
+          type: TransactionType.SAVINGS,
+          goalId: mockGoalId,
+        },
+      });
+      expect(prismaService.savingsGoal.update).toHaveBeenCalledWith({
+        where: { id: mockGoalId },
+        data: {
+          currentAmount: {
+            increment: inputCreateSavingDto.value,
+          },
+        },
+      });
+    });
+
+    it('should throw NotFoundException when savings goal does not exist', async () => {
+      (prismaService.savingsGoal.findUnique as jest.Mock).mockResolvedValue(
+        null,
+      );
+
+      await expect(
+        service.createSaving(mockUserId, inputCreateSavingDto),
+      ).rejects.toThrow(NotFoundException);
+      expect(prismaService.transaction.create).not.toHaveBeenCalled();
+      expect(prismaService.savingsGoal.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException when user does not own the savings goal', async () => {
+      const otherUserGoal = {
+        ...mockSavingsGoal,
+        userId: mockOtherUserId,
+      };
+      (prismaService.savingsGoal.findUnique as jest.Mock).mockResolvedValue(
+        otherUserGoal,
+      );
+
+      await expect(
+        service.createSaving(mockUserId, inputCreateSavingDto),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prismaService.transaction.create).not.toHaveBeenCalled();
+      expect(prismaService.savingsGoal.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('createExpense', () => {
+    const inputCreateExpenseDto: CreateExpenseDto = {
+      label: 'Groceries',
+      date: mockDate,
+      value: 75,
+      categoryId: mockCategoryId,
+    };
+
+    it('should create an expense transaction successfully with category', async () => {
+      const expectedTransaction = {
+        ...mockTransaction,
+        label: inputCreateExpenseDto.label,
+        value: inputCreateExpenseDto.value,
+        type: TransactionType.EXPENSE,
+        categoryId: mockCategoryId,
+      };
+      (prismaService.category.findUnique as jest.Mock).mockResolvedValue(
+        mockCategory,
+      );
+      (prismaService.transaction.create as jest.Mock).mockResolvedValue(
+        expectedTransaction,
+      );
+
+      const actualResult = await service.createExpense(
+        mockUserId,
+        inputCreateExpenseDto,
+      );
+
+      expect(actualResult.type).toBe(TransactionType.EXPENSE);
+      expect(actualResult.categoryId).toBe(mockCategoryId);
+      expect(prismaService.category.findUnique).toHaveBeenCalledWith({
+        where: { id: mockCategoryId },
+      });
+      expect(prismaService.transaction.create).toHaveBeenCalledWith({
+        data: {
+          userId: mockUserId,
+          label: inputCreateExpenseDto.label,
+          date: new Date(inputCreateExpenseDto.date),
+          value: inputCreateExpenseDto.value,
+          type: TransactionType.EXPENSE,
+          categoryId: mockCategoryId,
+        },
+      });
+    });
+
+    it('should create an expense transaction successfully without category', async () => {
+      const inputDtoWithoutCategory: CreateExpenseDto = {
+        label: 'Miscellaneous',
+        date: mockDate,
+        value: 25,
+      };
+      const expectedTransaction = {
+        ...mockTransaction,
+        label: inputDtoWithoutCategory.label,
+        value: inputDtoWithoutCategory.value,
+        type: TransactionType.EXPENSE,
+        categoryId: null,
+      };
+      (prismaService.transaction.create as jest.Mock).mockResolvedValue(
+        expectedTransaction,
+      );
+
+      const actualResult = await service.createExpense(
+        mockUserId,
+        inputDtoWithoutCategory,
+      );
+
+      expect(actualResult.type).toBe(TransactionType.EXPENSE);
+      expect(actualResult.categoryId).toBeNull();
+      expect(prismaService.category.findUnique).not.toHaveBeenCalled();
+      expect(prismaService.transaction.create).toHaveBeenCalledWith({
+        data: {
+          userId: mockUserId,
+          label: inputDtoWithoutCategory.label,
+          date: new Date(inputDtoWithoutCategory.date),
+          value: inputDtoWithoutCategory.value,
+          type: TransactionType.EXPENSE,
+          categoryId: undefined,
+        },
+      });
+    });
+
+    it('should throw NotFoundException when category does not exist', async () => {
+      (prismaService.category.findUnique as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        service.createExpense(mockUserId, inputCreateExpenseDto),
+      ).rejects.toThrow(NotFoundException);
+      expect(prismaService.transaction.create).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException when user does not own the category', async () => {
+      const otherUserCategory = {
+        ...mockCategory,
+        userId: mockOtherUserId,
+      };
+      (prismaService.category.findUnique as jest.Mock).mockResolvedValue(
+        otherUserCategory,
+      );
+
+      await expect(
+        service.createExpense(mockUserId, inputCreateExpenseDto),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prismaService.transaction.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('createRefund', () => {
+    const inputCreateRefundDto: CreateRefundDto = {
+      label: 'Clothing Refund',
+      date: mockDate,
+      value: 50,
+      categoryId: mockCategoryId,
+    };
+
+    it('should create a refund transaction successfully', async () => {
+      const expectedTransaction = {
+        ...mockTransaction,
+        label: inputCreateRefundDto.label,
+        value: inputCreateRefundDto.value,
+        type: TransactionType.REFUND,
+        categoryId: mockCategoryId,
+      };
+      (prismaService.category.findUnique as jest.Mock).mockResolvedValue(
+        mockCategory,
+      );
+      (prismaService.transaction.create as jest.Mock).mockResolvedValue(
+        expectedTransaction,
+      );
+
+      const actualResult = await service.createRefund(
+        mockUserId,
+        inputCreateRefundDto,
+      );
+
+      expect(actualResult.type).toBe(TransactionType.REFUND);
+      expect(actualResult.categoryId).toBe(mockCategoryId);
+      expect(prismaService.category.findUnique).toHaveBeenCalledWith({
+        where: { id: mockCategoryId },
+      });
+      expect(prismaService.transaction.create).toHaveBeenCalledWith({
+        data: {
+          userId: mockUserId,
+          label: inputCreateRefundDto.label,
+          date: new Date(inputCreateRefundDto.date),
+          value: inputCreateRefundDto.value,
+          type: TransactionType.REFUND,
+          categoryId: mockCategoryId,
+        },
+      });
+    });
+
+    it('should throw NotFoundException when category does not exist', async () => {
+      (prismaService.category.findUnique as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        service.createRefund(mockUserId, inputCreateRefundDto),
+      ).rejects.toThrow(NotFoundException);
+      expect(prismaService.transaction.create).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException when user does not own the category', async () => {
+      const otherUserCategory = {
+        ...mockCategory,
+        userId: mockOtherUserId,
+      };
+      (prismaService.category.findUnique as jest.Mock).mockResolvedValue(
+        otherUserCategory,
+      );
+
+      await expect(
+        service.createRefund(mockUserId, inputCreateRefundDto),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prismaService.transaction.create).not.toHaveBeenCalled();
+    });
+  });
+});
+

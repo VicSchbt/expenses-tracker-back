@@ -11,11 +11,14 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
 enum TransactionType {
   EXPENSE
   INCOME
   BILL
+  SUBSCRIPTION
   SAVINGS
+  REFUND
 }
 
 enum Recurrence {
@@ -26,11 +29,11 @@ enum Recurrence {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
+  id           String   @id @default(cuid())
+  email        String   @unique
   passwordHash String
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   categories   Category[]
   goals        SavingsGoal[]
@@ -38,51 +41,51 @@ model User {
 }
 
 model Category {
-  id        String        @id @default(cuid())
-  user      User          @relation(fields: [userId], references: [id])
-  userId    String
-  label     String
-  color     String?
-  icon      String?
+  id     String  @id @default(cuid())
+  user   User    @relation(fields: [userId], references: [id])
+  userId String
+  label  String
+  color  String?
+  icon   String?
 
   transactions Transaction[]
 }
 
 model SavingsGoal {
-  id            String        @id @default(cuid())
-  user          User          @relation(fields: [userId], references: [id])
-  userId        String
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
 
   name          String
   targetAmount  Decimal
-  currentAmount Decimal       @default(0)
+  currentAmount Decimal   @default(0)
   dueDate       DateTime?
 
-  createdAt     DateTime      @default(now())
+  createdAt DateTime @default(now())
 
-  transactions  Transaction[]
+  transactions Transaction[]
 }
 
 model Transaction {
-  id          String           @id @default(cuid())
-  user        User             @relation(fields: [userId], references: [id])
-  userId      String
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
 
-  label       String
-  date        DateTime
-  value       Decimal
-  type        TransactionType
+  label String
+  date  DateTime
+  value Decimal
+  type  TransactionType
 
-  category    Category?        @relation(fields: [categoryId], references: [id])
-  categoryId  String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+  categoryId String?
 
-  goal        SavingsGoal?     @relation(fields: [goalId], references: [id])
-  goalId      String?
+  goal   SavingsGoal? @relation(fields: [goalId], references: [id])
+  goalId String?
 
-  recurrence  Recurrence?
-  isPaid      Boolean?         @default(false)
-  dueDate     DateTime?
+  recurrence Recurrence?
+  isPaid     Boolean?    @default(false)
+  dueDate    DateTime?
 
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
