@@ -1,7 +1,7 @@
 {
   "_type": "export",
   "__export_format": 4,
-  "__export_date": "2025-11-23T12:00:00.000Z",
+  "__export_date": "2025-11-23T17:00:00.000Z",
   "__export_source": "insomnia.desktop.app:v2023.5.8",
   "resources": [
     {
@@ -317,6 +317,274 @@
         "token": "{{ _.accessToken }}"
       },
       "metaSortKey": 6000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "fld_transactions",
+      "_type": "request_group",
+      "parentId": "wrk_expense_tracker",
+      "name": "Transactions",
+      "description": "Transaction management endpoints",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 3000000000000
+    },
+    {
+      "_id": "req_create_income",
+      "_type": "request",
+      "parentId": "fld_transactions",
+      "name": "Create Income",
+      "description": "Creates a new income transaction.\n\n**Required fields:**\n- `label` (string): Transaction label/description\n- `date` (string): Transaction date in ISO format (e.g., \"2024-01-15T10:00:00.000Z\")\n- `value` (number): Income amount\n\n**Optional fields:**\n- `recurrence` (string): Recurrence pattern - one of: DAILY, WEEKLY, MONTHLY, YEARLY",
+      "url": "{{ _.baseUrl }}/transactions/income",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"label\": \"Salary\",\n  \"date\": \"2024-01-15T10:00:00.000Z\",\n  \"value\": 5000,\n  \"recurrence\": \"MONTHLY\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "pair_content_type_income"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization_income"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 1000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_create_bill",
+      "_type": "request",
+      "parentId": "fld_transactions",
+      "name": "Create Bill",
+      "description": "Creates a new bill transaction.\n\n**Required fields:**\n- `label` (string): Bill label/description\n- `date` (string): Bill date in ISO format\n- `value` (number): Bill amount\n\n**Optional fields:**\n- `recurrence` (string): Recurrence pattern - one of: DAILY, WEEKLY, MONTHLY, YEARLY",
+      "url": "{{ _.baseUrl }}/transactions/bill",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"label\": \"Electricity Bill\",\n  \"date\": \"2024-01-15T10:00:00.000Z\",\n  \"value\": 150,\n  \"recurrence\": \"MONTHLY\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "pair_content_type_bill"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization_bill"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 2000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_create_subscription",
+      "_type": "request",
+      "parentId": "fld_transactions",
+      "name": "Create Subscription",
+      "description": "Creates a new subscription transaction.\n\n**Required fields:**\n- `label` (string): Subscription label/description\n- `date` (string): Subscription date in ISO format\n- `value` (number): Subscription amount\n\n**Optional fields:**\n- `recurrence` (string): Recurrence pattern - one of: DAILY, WEEKLY, MONTHLY, YEARLY",
+      "url": "{{ _.baseUrl }}/transactions/subscription",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"label\": \"Netflix\",\n  \"date\": \"2024-01-15T10:00:00.000Z\",\n  \"value\": 15,\n  \"recurrence\": \"MONTHLY\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "pair_content_type_subscription"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization_subscription"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 3000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_create_saving",
+      "_type": "request",
+      "parentId": "fld_transactions",
+      "name": "Create Saving",
+      "description": "Creates a new saving transaction and updates the savings goal.\n\n**Required fields:**\n- `goalId` (string): The savings goal ID\n- `value` (number): Amount to save\n- `date` (string): Transaction date in ISO format\n\n**Note:** The savings goal must belong to the authenticated user. The goal's currentAmount will be automatically incremented.",
+      "url": "{{ _.baseUrl }}/transactions/saving",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"goalId\": \"goal-id-here\",\n  \"value\": 500,\n  \"date\": \"2024-01-15T10:00:00.000Z\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "pair_content_type_saving"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization_saving"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 4000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_create_expense",
+      "_type": "request",
+      "parentId": "fld_transactions",
+      "name": "Create Expense",
+      "description": "Creates a new expense transaction.\n\n**Required fields:**\n- `label` (string): Expense label/description\n- `date` (string): Expense date in ISO format\n- `value` (number): Expense amount\n\n**Optional fields:**\n- `categoryId` (string): Category ID to associate with this expense",
+      "url": "{{ _.baseUrl }}/transactions/expense",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"label\": \"Groceries\",\n  \"date\": \"2024-01-15T10:00:00.000Z\",\n  \"value\": 75,\n  \"categoryId\": \"category-id-here\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "pair_content_type_expense"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization_expense"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 5000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_create_refund",
+      "_type": "request",
+      "parentId": "fld_transactions",
+      "name": "Create Refund",
+      "description": "Creates a new refund transaction to balance future budgets.\n\n**Required fields:**\n- `label` (string): Refund label/description\n- `date` (string): Refund date in ISO format\n- `value` (number): Refund amount\n- `categoryId` (string): Category ID to return money to (required for refunds)\n\n**Note:** Refunds are used to return money to a category. For example, if you spent money in the \"clothing\" category and returned an item, you can create a refund to balance future budgets.",
+      "url": "{{ _.baseUrl }}/transactions/refund",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"label\": \"Clothing Refund\",\n  \"date\": \"2024-01-15T10:00:00.000Z\",\n  \"value\": 50,\n  \"categoryId\": \"category-id-here\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "pair_content_type_refund"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization_refund"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 6000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_test_transactions",
+      "_type": "request",
+      "parentId": "fld_transactions",
+      "name": "Test Endpoint",
+      "description": "Smoke test endpoint to verify the transactions module is working correctly.\n\nReturns a simple success message.",
+      "url": "{{ _.baseUrl }}/transactions/admin/test",
+      "method": "POST",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization_test"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 7000000000000,
       "isPrivate": false,
       "settingStoreCookies": true,
       "settingSendCookies": true,

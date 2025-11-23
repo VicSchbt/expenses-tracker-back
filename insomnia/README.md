@@ -39,6 +39,15 @@ Alternatively, you can use Insomnia's response extraction feature to automatical
 - **Delete Category**: Delete a category by ID
 - **Test Endpoint**: Smoke test to verify the module is working
 
+### Transactions Folder
+- **Create Income**: Create a new income transaction (with optional recurrence)
+- **Create Bill**: Create a new bill transaction (with optional recurrence)
+- **Create Subscription**: Create a new subscription transaction (with optional recurrence)
+- **Create Saving**: Create a new saving transaction (requires savings goal ID, automatically updates goal)
+- **Create Expense**: Create a new expense transaction (with optional category)
+- **Create Refund**: Create a refund transaction to balance future budgets (requires category ID)
+- **Test Endpoint**: Smoke test to verify the module is working
+
 ## Usage Tips
 
 1. **Path Parameters**: For requests that require an ID (Get/Update/Delete Category), update the `id` parameter in the URL parameters section
@@ -52,6 +61,41 @@ Alternatively, you can use Insomnia's response extraction feature to automatical
 3. Set the `accessToken` in the Local environment
 4. Create a category → `POST /categories`
 5. Get all categories → `GET /categories`
-6. Update a category → `PATCH /categories/:id`
-7. Delete a category → `DELETE /categories/:id`
+6. Create an income transaction → `POST /transactions/income`
+7. Create an expense transaction → `POST /transactions/expense` (with category ID)
+8. Create a refund transaction → `POST /transactions/refund` (to balance the category)
+9. Create a bill transaction → `POST /transactions/bill` (with recurrence)
+10. Create a subscription transaction → `POST /transactions/subscription` (with recurrence)
+
+## Transaction Types
+
+### Income
+- Used for money coming in (salary, bonuses, etc.)
+- Optional recurrence (DAILY, WEEKLY, MONTHLY, YEARLY)
+- Required: `label`, `date`, `value`
+
+### Bill
+- Used for recurring bills (utilities, rent, etc.)
+- Optional recurrence (DAILY, WEEKLY, MONTHLY, YEARLY)
+- Required: `label`, `date`, `value`
+
+### Subscription
+- Used for subscription services (Netflix, Spotify, etc.)
+- Optional recurrence (typically MONTHLY)
+- Required: `label`, `date`, `value`
+
+### Saving
+- Used to add money to a savings goal
+- Automatically updates the savings goal's `currentAmount`
+- Required: `goalId`, `value`, `date`
+
+### Expense
+- Used for general expenses
+- Optional category association
+- Required: `label`, `date`, `value`
+
+### Refund
+- Used to return money to a category (e.g., after returning a purchased item)
+- Required category ID to balance future budgets
+- Required: `label`, `date`, `value`, `categoryId`
 
