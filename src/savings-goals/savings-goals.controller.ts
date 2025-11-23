@@ -9,20 +9,37 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+} from '@nestjs/swagger';
 import { SavingsGoalsService } from './savings-goals.service';
 import { CreateSavingsGoalDto } from './models/create-savings-goal.dto';
 import { UpdateSavingsGoalDto } from './models/update-savings-goal.dto';
 import { SavingsGoal } from './models/savings-goal.type';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
+@ApiTags('savings-goals')
 @Controller('savings-goals')
 @UseGuards(JwtAuthGuard)
+@ApiBearerAuth('JWT-auth')
 export class SavingsGoalsController {
   constructor(
     private readonly savingsGoalsService: SavingsGoalsService,
   ) {}
 
   @Post()
+  @ApiOperation({ summary: 'Create a new savings goal' })
+  @ApiResponse({
+    status: 201,
+    description: 'Savings goal successfully created',
+    type: SavingsGoal,
+  })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async create(
     @Request() req: { user: { id: string; email: string } },
     @Body() createSavingsGoalDto: CreateSavingsGoalDto,
@@ -34,6 +51,13 @@ export class SavingsGoalsController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'Get all savings goals for the authenticated user' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of savings goals',
+    type: [SavingsGoal],
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async findAll(
     @Request() req: { user: { id: string; email: string } },
   ): Promise<SavingsGoal[]> {
@@ -41,6 +65,15 @@ export class SavingsGoalsController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Get a savings goal by ID' })
+  @ApiParam({ name: 'id', description: 'Savings goal ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Savings goal found',
+    type: SavingsGoal,
+  })
+  @ApiResponse({ status: 404, description: 'Savings goal not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async findOne(
     @Request() req: { user: { id: string; email: string } },
     @Param('id') id: string,
@@ -49,6 +82,15 @@ export class SavingsGoalsController {
   }
 
   @Patch(':id')
+  @ApiOperation({ summary: 'Update a savings goal' })
+  @ApiParam({ name: 'id', description: 'Savings goal ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Savings goal successfully updated',
+    type: SavingsGoal,
+  })
+  @ApiResponse({ status: 404, description: 'Savings goal not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async update(
     @Request() req: { user: { id: string; email: string } },
     @Param('id') id: string,
@@ -62,6 +104,14 @@ export class SavingsGoalsController {
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Delete a savings goal' })
+  @ApiParam({ name: 'id', description: 'Savings goal ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Savings goal successfully deleted',
+  })
+  @ApiResponse({ status: 404, description: 'Savings goal not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async remove(
     @Request() req: { user: { id: string; email: string } },
     @Param('id') id: string,
@@ -71,6 +121,8 @@ export class SavingsGoalsController {
   }
 
   @Get('admin/test')
+  @ApiOperation({ summary: 'Test savings goals module' })
+  @ApiResponse({ status: 200, description: 'Savings goals module is working correctly' })
   test() {
     return { message: 'Savings goals module is working correctly' };
   }

@@ -1,19 +1,37 @@
 import { IsNotEmpty, IsString, IsDateString, IsNumber, IsOptional, IsEnum } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Recurrence } from '@prisma/client';
 
 export class CreateBillDto {
+  @ApiProperty({
+    description: 'Bill label',
+    example: 'Electricity Bill',
+  })
   @IsString()
   @IsNotEmpty()
   label: string;
 
+  @ApiProperty({
+    description: 'Bill date (ISO 8601 format)',
+    example: '2024-01-15',
+  })
   @IsDateString()
   @IsNotEmpty()
   date: string;
 
+  @ApiProperty({
+    description: 'Bill amount',
+    example: 150.00,
+  })
   @IsNumber()
   @IsNotEmpty()
   value: number;
 
+  @ApiPropertyOptional({
+    description: 'Recurrence pattern',
+    enum: Recurrence,
+    example: Recurrence.MONTHLY,
+  })
   @IsEnum(Recurrence)
   @IsOptional()
   recurrence?: Recurrence;
