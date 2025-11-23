@@ -48,6 +48,14 @@ Alternatively, you can use Insomnia's response extraction feature to automatical
 - **Create Refund**: Create a refund transaction to balance future budgets (requires category ID)
 - **Test Endpoint**: Smoke test to verify the module is working
 
+### Savings Goals Folder
+- **Create Savings Goal**: Create a new savings goal with name, target amount, and optional end date
+- **Get All Savings Goals**: List all savings goals for the authenticated user
+- **Get Savings Goal by ID**: Get a specific savings goal by ID
+- **Update Savings Goal**: Update an existing savings goal (partial updates supported)
+- **Delete Savings Goal**: Delete a savings goal by ID
+- **Test Endpoint**: Smoke test to verify the module is working
+
 ## Usage Tips
 
 1. **Path Parameters**: For requests that require an ID (Get/Update/Delete Category), update the `id` parameter in the URL parameters section
@@ -61,11 +69,14 @@ Alternatively, you can use Insomnia's response extraction feature to automatical
 3. Set the `accessToken` in the Local environment
 4. Create a category → `POST /categories`
 5. Get all categories → `GET /categories`
-6. Create an income transaction → `POST /transactions/income`
-7. Create an expense transaction → `POST /transactions/expense` (with category ID)
-8. Create a refund transaction → `POST /transactions/refund` (to balance the category)
-9. Create a bill transaction → `POST /transactions/bill` (with recurrence)
-10. Create a subscription transaction → `POST /transactions/subscription` (with recurrence)
+6. Create a savings goal → `POST /savings-goals` (e.g., "Vacation Fund", target: 5000)
+7. Get all savings goals → `GET /savings-goals` (to get the goal ID)
+8. Create a saving transaction → `POST /transactions/saving` (with goal ID, automatically updates currentAmount)
+9. Create an income transaction → `POST /transactions/income`
+10. Create an expense transaction → `POST /transactions/expense` (with category ID)
+11. Create a refund transaction → `POST /transactions/refund` (to balance the category)
+12. Create a bill transaction → `POST /transactions/bill` (with recurrence)
+13. Create a subscription transaction → `POST /transactions/subscription` (with recurrence)
 
 ## Transaction Types
 
@@ -98,4 +109,19 @@ Alternatively, you can use Insomnia's response extraction feature to automatical
 - Used to return money to a category (e.g., after returning a purchased item)
 - Required category ID to balance future budgets
 - Required: `label`, `date`, `value`, `categoryId`
+
+## Savings Goals
+
+Savings goals allow you to track progress toward specific financial targets.
+
+### Creating a Savings Goal
+- **name** (required): The goal name/label (e.g., "Vacation Fund", "Emergency Fund")
+- **targetAmount** (required): The target amount you want to reach
+- **dueDate** (optional): The end date for the goal in ISO format
+
+### Tracking Progress
+- When you create a savings goal, `currentAmount` starts at 0
+- When you create a saving transaction using `POST /transactions/saving`, the goal's `currentAmount` is automatically incremented
+- The `createdAt` field represents the start date when the goal was created
+- You can view the current progress by getting the savings goal details
 

@@ -592,6 +592,233 @@
       "settingEncodeUrl": true,
       "settingRebuildPath": true,
       "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "fld_savings_goals",
+      "_type": "request_group",
+      "parentId": "wrk_expense_tracker",
+      "name": "Savings Goals",
+      "description": "Savings goals management endpoints",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 4000000000000
+    },
+    {
+      "_id": "req_create_savings_goal",
+      "_type": "request",
+      "parentId": "fld_savings_goals",
+      "name": "Create Savings Goal",
+      "description": "Creates a new savings goal.\n\n**Required fields:**\n- `name` (string): Goal name/label\n- `targetAmount` (number): Target amount to reach\n\n**Optional fields:**\n- `dueDate` (string): End date in ISO format (e.g., \"2024-12-31T00:00:00.000Z\")\n\n**Note:** The `currentAmount` starts at 0 and is automatically updated when you add saving transactions.",
+      "url": "{{ _.baseUrl }}/savings-goals",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Vacation Fund\",\n  \"targetAmount\": 5000,\n  \"dueDate\": \"2024-12-31T00:00:00.000Z\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "pair_content_type_savings_goal"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization_savings_goal"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 1000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_get_all_savings_goals",
+      "_type": "request",
+      "parentId": "fld_savings_goals",
+      "name": "Get All Savings Goals",
+      "description": "Retrieves all savings goals belonging to the authenticated user.\n\nReturns an array of savings goal objects with:\n- `id`: Goal ID\n- `name`: Goal name/label\n- `targetAmount`: Target amount to reach\n- `currentAmount`: Current amount saved (starts at 0)\n- `dueDate`: Optional end date\n- `createdAt`: Start date when the goal was created",
+      "url": "{{ _.baseUrl }}/savings-goals",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization_get_all"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 2000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_get_savings_goal_by_id",
+      "_type": "request",
+      "parentId": "fld_savings_goals",
+      "name": "Get Savings Goal by ID",
+      "description": "Retrieves a specific savings goal by its ID.\n\n**Path Parameters:**\n- `id` (string): The savings goal ID\n\n**Note:** Replace `goal-id-here` with an actual savings goal ID from your database or from the \"Get All Savings Goals\" response.",
+      "url": "{{ _.baseUrl }}/savings-goals/:id",
+      "method": "GET",
+      "body": {},
+      "parameters": [
+        {
+          "id": "pair_id_goal",
+          "name": "id",
+          "value": "goal-id-here",
+          "description": "Savings Goal ID"
+        }
+      ],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization_get_one"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 3000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_update_savings_goal",
+      "_type": "request",
+      "parentId": "fld_savings_goals",
+      "name": "Update Savings Goal",
+      "description": "Updates an existing savings goal. All fields are optional - you can update just the fields you want to change.\n\n**Path Parameters:**\n- `id` (string): The savings goal ID to update\n\n**Optional fields:**\n- `name` (string): Updated goal name\n- `targetAmount` (number): Updated target amount\n- `dueDate` (string): Updated end date in ISO format",
+      "url": "{{ _.baseUrl }}/savings-goals/:id",
+      "method": "PATCH",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Updated Vacation Fund\",\n  \"targetAmount\": 6000,\n  \"dueDate\": \"2025-12-31T00:00:00.000Z\"\n}"
+      },
+      "parameters": [
+        {
+          "id": "pair_id_update",
+          "name": "id",
+          "value": "goal-id-here",
+          "description": "Savings Goal ID"
+        }
+      ],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "pair_content_type_update"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization_update"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 4000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_delete_savings_goal",
+      "_type": "request",
+      "parentId": "fld_savings_goals",
+      "name": "Delete Savings Goal",
+      "description": "Deletes a savings goal by its ID.\n\n**Path Parameters:**\n- `id` (string): The savings goal ID to delete\n\n**Note:**\n- Only the owner of the savings goal can delete it\n- Replace `goal-id-here` with an actual savings goal ID",
+      "url": "{{ _.baseUrl }}/savings-goals/:id",
+      "method": "DELETE",
+      "body": {},
+      "parameters": [
+        {
+          "id": "pair_id_delete",
+          "name": "id",
+          "value": "goal-id-here",
+          "description": "Savings Goal ID"
+        }
+      ],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization_delete"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 5000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_test_savings_goals",
+      "_type": "request",
+      "parentId": "fld_savings_goals",
+      "name": "Test Endpoint",
+      "description": "Smoke test endpoint to verify the savings goals module is working correctly.\n\nReturns a simple success message.",
+      "url": "{{ _.baseUrl }}/savings-goals/admin/test",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization_test_goals"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 6000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
     }
   ]
 }
