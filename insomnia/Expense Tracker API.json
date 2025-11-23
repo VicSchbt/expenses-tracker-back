@@ -1,0 +1,330 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2025-11-23T12:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v2023.5.8",
+  "resources": [
+    {
+      "_id": "wrk_expense_tracker",
+      "_type": "workspace",
+      "parentId": null,
+      "name": "Expense Tracker API",
+      "description": "API collection for Expense Tracker Backend",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_local",
+      "_type": "environment",
+      "parentId": "wrk_expense_tracker",
+      "name": "Local",
+      "data": {
+        "baseUrl": "http://localhost:3000",
+        "accessToken": ""
+      },
+      "dataPropertyOrder": {
+        "&": ["baseUrl", "accessToken"]
+      },
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 1000000000000
+    },
+    {
+      "_id": "fld_auth",
+      "_type": "request_group",
+      "parentId": "wrk_expense_tracker",
+      "name": "Auth",
+      "description": "Authentication endpoints",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 1000000000000
+    },
+    {
+      "_id": "req_register",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Register",
+      "description": "Register a new user account",
+      "url": "{{ _.baseUrl }}/auth/register",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"hello@example.com\",\n  \"password\": \"example123\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "pair_content_type"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 1000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_login",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Login",
+      "description": "Authenticate and get an access token.\n\nAfter successful login, copy the `accessToken` from the response and update the `accessToken` variable in the environment.",
+      "url": "{{ _.baseUrl }}/auth/login",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"hello@example.com\",\n  \"password\": \"example123\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "pair_content_type"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": 2000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "fld_categories",
+      "_type": "request_group",
+      "parentId": "wrk_expense_tracker",
+      "name": "Categories",
+      "description": "Category management endpoints",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": 2000000000000
+    },
+    {
+      "_id": "req_create_category",
+      "_type": "request",
+      "parentId": "fld_categories",
+      "name": "Create Category",
+      "description": "Creates a new category for the authenticated user.\n\n**Required fields:**\n- `label` (string): The category label/name\n\n**Optional fields:**\n- `icon` (string): Icon identifier for the category\n- `color` (string): Color code (e.g., hex color)",
+      "url": "{{ _.baseUrl }}/categories",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"label\": \"Groceries\",\n  \"icon\": \"shopping-cart\",\n  \"color\": \"#FF5733\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "pair_content_type"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 1000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_get_all_categories",
+      "_type": "request",
+      "parentId": "fld_categories",
+      "name": "Get All Categories",
+      "description": "Retrieves all categories belonging to the authenticated user.\n\nReturns an array of category objects.",
+      "url": "{{ _.baseUrl }}/categories",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 2000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_get_category_by_id",
+      "_type": "request",
+      "parentId": "fld_categories",
+      "name": "Get Category by ID",
+      "description": "Retrieves a specific category by its ID.\n\n**Path Parameters:**\n- `id` (string): The category ID\n\n**Note:** Replace `category-id-here` with an actual category ID from your database or from the \"Get All Categories\" response.",
+      "url": "{{ _.baseUrl }}/categories/:id",
+      "method": "GET",
+      "body": {},
+      "parameters": [
+        {
+          "id": "pair_id",
+          "name": "id",
+          "value": "category-id-here",
+          "description": "Category ID"
+        }
+      ],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 3000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_update_category",
+      "_type": "request",
+      "parentId": "fld_categories",
+      "name": "Update Category",
+      "description": "Updates an existing category. All fields are optional - you can update just the fields you want to change.\n\n**Path Parameters:**\n- `id` (string): The category ID to update\n\n**Optional fields:**\n- `label` (string): Updated category label\n- `icon` (string): Updated icon identifier\n- `color` (string): Updated color code",
+      "url": "{{ _.baseUrl }}/categories/:id",
+      "method": "PATCH",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"label\": \"Updated Groceries\",\n  \"icon\": \"cart\",\n  \"color\": \"#00FF00\"\n}"
+      },
+      "parameters": [
+        {
+          "id": "pair_id",
+          "name": "id",
+          "value": "category-id-here",
+          "description": "Category ID"
+        }
+      ],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "id": "pair_content_type"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 4000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_delete_category",
+      "_type": "request",
+      "parentId": "fld_categories",
+      "name": "Delete Category",
+      "description": "Deletes a category by its ID.\n\n**Path Parameters:**\n- `id` (string): The category ID to delete\n\n**Note:**\n- Only the owner of the category can delete it\n- Replace `category-id-here` with an actual category ID",
+      "url": "{{ _.baseUrl }}/categories/:id",
+      "method": "DELETE",
+      "body": {},
+      "parameters": [
+        {
+          "id": "pair_id",
+          "name": "id",
+          "value": "category-id-here",
+          "description": "Category ID"
+        }
+      ],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 5000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_test_endpoint",
+      "_type": "request",
+      "parentId": "fld_categories",
+      "name": "Test Endpoint",
+      "description": "Smoke test endpoint to verify the categories module is working correctly.\n\nReturns a simple success message.",
+      "url": "{{ _.baseUrl }}/categories/admin/test",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.accessToken }}",
+          "id": "pair_authorization"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "metaSortKey": 6000000000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    }
+  ]
+}
+
