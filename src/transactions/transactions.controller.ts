@@ -24,6 +24,8 @@ import { CreateExpenseDto } from './models/create-expense.dto';
 import { CreateRefundDto } from './models/create-refund.dto';
 import { Transaction } from './models/transaction.type';
 import { MonthlyBalance } from './models/monthly-balance.type';
+import { PaginatedTransactions } from './models/paginated-transactions.type';
+import { GetExpensesRefundsQueryDto } from './models/get-expenses-refunds-query.dto';
 
 @ApiTags('transactions')
 @Controller('transactions')
@@ -112,7 +114,10 @@ export class TransactionsController {
     @Request() req: { user: { id: string; email: string } },
     @Body() createExpenseDto: CreateExpenseDto,
   ): Promise<Transaction> {
-    return this.transactionsService.createExpense(req.user.id, createExpenseDto);
+    return this.transactionsService.createExpense(
+      req.user.id,
+      createExpenseDto,
+    );
   }
 
   @Post('refund')
@@ -129,6 +134,58 @@ export class TransactionsController {
     @Body() createRefundDto: CreateRefundDto,
   ): Promise<Transaction> {
     return this.transactionsService.createRefund(req.user.id, createRefundDto);
+  }
+
+  @Get('expenses-refunds')
+  @ApiOperation({
+    summary: 'Get expenses and refunds',
+    description:
+      'Fetches all expenses and refunds for the user with pagination. Can filter by month/year or get all transactions. If only month is provided, uses current year. If neither year nor month is provided, returns all transactions.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Expenses and refunds successfully retrieved',
+    type: PaginatedTransactions,
+  })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getExpensesAndRefunds(
+    @Request() req: { user: { id: string; email: string } },
+    @Query() queryDto: GetExpensesRefundsQueryDto,
+  ): Promise<PaginatedTransactions> {
+    return this.transactionsService.getExpensesAndRefunds(
+      req.user.id,
+      queryDto,
+    );
+  }
+
+  @Get('expenses-refunds/current-month')
+  @ApiOperation({
+    summary: 'Get current month expenses and refunds',
+    description:
+      'Fetches expenses and refunds for the current month with pagination.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Current month expenses and refunds successfully retrieved',
+    type: PaginatedTransactions,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getCurrentMonthExpensesAndRefunds(
+    @Request() req: { user: { id: string; email: string } },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ): Promise<PaginatedTransactions> {
+    const pageNumber = page ? parseInt(page, 10) : 1;
+    const limitNumber = limit ? parseInt(limit, 10) : 20;
+    if (isNaN(pageNumber) || isNaN(limitNumber)) {
+      throw new BadRequestException('Page and limit must be valid numbers');
+    }
+    return this.transactionsService.getCurrentMonthExpensesAndRefunds(
+      req.user.id,
+      pageNumber,
+      limitNumber,
+    );
   }
 
   @Get('balance/monthly')
@@ -163,9 +220,11 @@ export class TransactionsController {
 
   @Post('admin/test')
   @ApiOperation({ summary: 'Test transactions module' })
-  @ApiResponse({ status: 200, description: 'Transactions module is working correctly' })
+  @ApiResponse({
+    status: 200,
+    description: 'Transactions module is working correctly',
+  })
   test() {
     return { message: 'Transactions module is working correctly' };
   }
 }
-
