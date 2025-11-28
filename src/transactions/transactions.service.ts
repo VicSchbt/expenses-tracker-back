@@ -16,6 +16,7 @@ import { Transaction } from './models/transaction.type';
 import { MonthlyBalance } from './models/monthly-balance.type';
 import { PaginatedTransactions } from './models/paginated-transactions.type';
 import { GetExpensesRefundsQueryDto } from './models/get-expenses-refunds-query.dto';
+import { UpdateTransactionDto } from './models/update-transaction.dto';
 
 @Injectable()
 export class TransactionsService {
@@ -144,6 +145,99 @@ export class TransactionsService {
       },
     });
     return this.mapToTransactionType(transaction);
+  }
+
+  async updateTransaction(
+    userId: string,
+    id: string,
+    updateTransactionDto: UpdateTransactionDto,
+  ): Promise<Transaction> {
+    const existingTransaction = await this.prisma.transaction.findUnique({
+      where: { id },
+    });
+    if (!existingTransaction) {
+      throw new NotFoundException('Transaction not found');
+    }
+    if (existingTransaction.userId !== userId) {
+      throw new ForbiddenException('You do not have access to this transaction');
+    }
+    if (updateTransactionDto.categoryId) {
+      await this.validateCategoryOwnership(userId, updateTransactionDto.categoryId);
+    }
+    const data: any = {};
+    if (updateTransactionDto.label !== undefined) {
+      data.label = updateTransactionDto.label;
+    }
+    if (updateTransactionDto.date !== undefined) {
+      data.date = new Date(updateTransactionDto.date);
+    }
+    if (updateTransactionDto.value !== undefined) {
+      data.value = updateTransactionDto.value;
+    }
+    if (updateTransactionDto.categoryId !== undefined) {
+      data.categoryId = updateTransactionDto.categoryId;
+    }
+    if (updateTransactionDto.recurrence !== undefined) {
+      data.recurrence = updateTransactionDto.recurrence;
+    }
+    if (updateTransactionDto.isPaid !== undefined) {
+      data.isPaid = updateTransactionDto.isPaid;
+    }
+    if (updateTransactionDto.dueDate !== undefined) {
+      data.dueDate = new Date(updateTransactionDto.dueDate);
+    }
+    if (
+      existingTransaction.type === TransactionType.SAVINGS &&
+      updateTransactionDto.value !== undefined &&
+      existingTransaction.goalId
+    ) {
+      const existingValue = Number(existingTransaction.value);
+      const difference = updateTransactionDto.value - existingValue;
+      if (difference !== 0) {
+        await this.prisma.savingsGoal.update({
+          where: { id: existingTransaction.goalId },
+          data: {
+            currentAmount: {
+              increment: difference,
+            },
+          },
+        });
+      }
+    }
+    const updatedTransaction = await this.prisma.transaction.update({
+      where: { id },
+      data,
+    });
+    return this.mapToTransactionType(updatedTransaction);
+  }
+
+  async removeTransaction(userId: string, id: string): Promise<void> {
+    const existingTransaction = await this.prisma.transaction.findUnique({
+      where: { id },
+    });
+    if (!existingTransaction) {
+      throw new NotFoundException('Transaction not found');
+    }
+    if (existingTransaction.userId !== userId) {
+      throw new ForbiddenException('You do not have access to this transaction');
+    }
+    if (
+      existingTransaction.type === TransactionType.SAVINGS &&
+      existingTransaction.goalId
+    ) {
+      const existingValue = Number(existingTransaction.value);
+      await this.prisma.savingsGoal.update({
+        where: { id: existingTransaction.goalId },
+        data: {
+          currentAmount: {
+            increment: -existingValue,
+          },
+        },
+      });
+    }
+    await this.prisma.transaction.delete({
+      where: { id },
+    });
   }
 
   private async validateCategoryOwnership(

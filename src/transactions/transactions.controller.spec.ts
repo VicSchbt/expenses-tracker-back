@@ -9,6 +9,7 @@ import { CreateSavingDto } from './models/create-saving.dto';
 import { CreateExpenseDto } from './models/create-expense.dto';
 import { CreateRefundDto } from './models/create-refund.dto';
 import { Transaction } from './models/transaction.type';
+import { UpdateTransactionDto } from './models/update-transaction.dto';
 
 describe('TransactionsController', () => {
   let controller: TransactionsController;
@@ -51,6 +52,8 @@ describe('TransactionsController', () => {
       createSaving: jest.fn(),
       createExpense: jest.fn(),
       createRefund: jest.fn(),
+      updateTransaction: jest.fn(),
+      removeTransaction: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -310,6 +313,51 @@ describe('TransactionsController', () => {
       expect(transactionsService.createRefund).toHaveBeenCalledWith(
         mockUserId,
         inputCreateRefundDto,
+      );
+    });
+  });
+
+  describe('updateTransaction', () => {
+    it('should update a transaction', async () => {
+      const inputUpdateTransactionDto: UpdateTransactionDto = {
+        label: 'Updated label',
+        value: 200,
+      };
+      const expectedTransaction: Transaction = {
+        ...mockTransaction,
+        label: inputUpdateTransactionDto.label as string,
+        value: inputUpdateTransactionDto.value as number,
+      };
+      transactionsService.updateTransaction.mockResolvedValue(
+        expectedTransaction,
+      );
+      const actualResult = await controller.updateTransaction(
+        mockRequest as any,
+        mockTransactionId,
+        inputUpdateTransactionDto,
+      );
+      expect(actualResult).toEqual(expectedTransaction);
+      expect(transactionsService.updateTransaction).toHaveBeenCalledWith(
+        mockUserId,
+        mockTransactionId,
+        inputUpdateTransactionDto,
+      );
+    });
+  });
+
+  describe('removeTransaction', () => {
+    it('should delete a transaction', async () => {
+      transactionsService.removeTransaction.mockResolvedValue(undefined);
+      const actualResult = await controller.removeTransaction(
+        mockRequest as any,
+        mockTransactionId,
+      );
+      expect(actualResult).toEqual({
+        message: 'Transaction deleted successfully',
+      });
+      expect(transactionsService.removeTransaction).toHaveBeenCalledWith(
+        mockUserId,
+        mockTransactionId,
       );
     });
   });

@@ -7,12 +7,16 @@ import {
   UseGuards,
   Request,
   BadRequestException,
+  Patch,
+  Param,
+  Delete,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiParam,
 } from '@nestjs/swagger';
 import { TransactionsService } from './transactions.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -26,6 +30,7 @@ import { Transaction } from './models/transaction.type';
 import { MonthlyBalance } from './models/monthly-balance.type';
 import { PaginatedTransactions } from './models/paginated-transactions.type';
 import { GetExpensesRefundsQueryDto } from './models/get-expenses-refunds-query.dto';
+import { UpdateTransactionDto } from './models/update-transaction.dto';
 
 @ApiTags('transactions')
 @Controller('transactions')
@@ -216,6 +221,49 @@ export class TransactionsController {
       yearNumber,
       monthNumber,
     );
+  }
+
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Update a transaction',
+    description:
+      'Updates an existing transaction. All fields are optional; only provided fields will be updated.',
+  })
+  @ApiParam({ name: 'id', description: 'Transaction ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Transaction successfully updated',
+    type: Transaction,
+  })
+  @ApiResponse({ status: 404, description: 'Transaction not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async updateTransaction(
+    @Request() req: { user: { id: string; email: string } },
+    @Param('id') id: string,
+    @Body() updateTransactionDto: UpdateTransactionDto,
+  ): Promise<Transaction> {
+    return this.transactionsService.updateTransaction(
+      req.user.id,
+      id,
+      updateTransactionDto,
+    );
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a transaction' })
+  @ApiParam({ name: 'id', description: 'Transaction ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Transaction successfully deleted',
+  })
+  @ApiResponse({ status: 404, description: 'Transaction not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async removeTransaction(
+    @Request() req: { user: { id: string; email: string } },
+    @Param('id') id: string,
+  ): Promise<{ message: string }> {
+    await this.transactionsService.removeTransaction(req.user.id, id);
+    return { message: 'Transaction deleted successfully' };
   }
 
   @Post('admin/test')

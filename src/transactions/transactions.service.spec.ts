@@ -6,6 +6,7 @@ import {
 import { TransactionsService } from './transactions.service';
 import { PrismaService } from 'prisma/prisma.service';
 import { TransactionType, Recurrence } from '@prisma/client';
+import { UpdateTransactionDto } from './models/update-transaction.dto';
 import { CreateIncomeDto } from './models/create-income.dto';
 import { CreateBillDto } from './models/create-bill.dto';
 import { CreateSubscriptionDto } from './models/create-subscription.dto';
@@ -63,6 +64,9 @@ describe('TransactionsService', () => {
     const mockPrismaService = {
       transaction: {
         create: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
       },
       category: {
         findUnique: jest.fn(),
@@ -520,6 +524,193 @@ describe('TransactionsService', () => {
         service.createRefund(mockUserId, inputCreateRefundDto),
       ).rejects.toThrow(ForbiddenException);
       expect(prismaService.transaction.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateTransaction', () => {
+    it('should update a transaction for the owner', async () => {
+      const inputUpdateTransactionDto: UpdateTransactionDto = {
+        label: 'Updated label',
+        value: 200,
+      };
+      const existingTransaction = { ...mockTransaction };
+      const updatedTransaction = {
+        ...existingTransaction,
+        label: inputUpdateTransactionDto.label,
+        value: inputUpdateTransactionDto.value,
+      };
+      (prismaService.transaction.findUnique as jest.Mock).mockResolvedValue(
+        existingTransaction,
+      );
+      (prismaService.transaction.update as jest.Mock).mockResolvedValue(
+        updatedTransaction,
+      );
+      const actualResult = await service.updateTransaction(
+        mockUserId,
+        mockTransactionId,
+        inputUpdateTransactionDto,
+      );
+      expect(actualResult.label).toBe(inputUpdateTransactionDto.label);
+      expect(actualResult.value).toBe(inputUpdateTransactionDto.value);
+      expect(prismaService.transaction.findUnique).toHaveBeenCalledWith({
+        where: { id: mockTransactionId },
+      });
+      expect(prismaService.transaction.update).toHaveBeenCalledWith({
+        where: { id: mockTransactionId },
+        data: {
+          label: inputUpdateTransactionDto.label,
+          value: inputUpdateTransactionDto.value,
+        },
+      });
+    });
+
+    it('should adjust savings goal when updating a savings transaction value', async () => {
+      const savingsTransaction = {
+        ...mockTransaction,
+        type: TransactionType.SAVINGS,
+        goalId: mockGoalId,
+        value: 100,
+      };
+      const inputUpdateTransactionDto: UpdateTransactionDto = {
+        value: 150,
+      };
+      const updatedTransaction = {
+        ...savingsTransaction,
+        value: inputUpdateTransactionDto.value,
+      };
+      (prismaService.transaction.findUnique as jest.Mock).mockResolvedValue(
+        savingsTransaction,
+      );
+      (prismaService.transaction.update as jest.Mock).mockResolvedValue(
+        updatedTransaction,
+      );
+      (prismaService.savingsGoal.update as jest.Mock).mockResolvedValue({
+        ...mockSavingsGoal,
+        currentAmount:
+          mockSavingsGoal.currentAmount +
+          ((inputUpdateTransactionDto.value as number) - 100),
+      });
+      const actualResult = await service.updateTransaction(
+        mockUserId,
+        mockTransactionId,
+        inputUpdateTransactionDto,
+      );
+      expect(actualResult.value).toBe(inputUpdateTransactionDto.value);
+      expect(prismaService.savingsGoal.update).toHaveBeenCalledWith({
+        where: { id: mockGoalId },
+        data: {
+          currentAmount: {
+            increment: (inputUpdateTransactionDto.value as number) - 100,
+          },
+        },
+      });
+    });
+
+    it('should throw NotFoundException when transaction does not exist', async () => {
+      (prismaService.transaction.findUnique as jest.Mock).mockResolvedValue(
+        null,
+      );
+      const inputUpdateTransactionDto: UpdateTransactionDto = {
+        label: 'Updated',
+      };
+      await expect(
+        service.updateTransaction(
+          mockUserId,
+          mockTransactionId,
+          inputUpdateTransactionDto,
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(prismaService.transaction.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException when user does not own the transaction', async () => {
+      const otherUserTransaction = {
+        ...mockTransaction,
+        userId: mockOtherUserId,
+      };
+      (prismaService.transaction.findUnique as jest.Mock).mockResolvedValue(
+        otherUserTransaction,
+      );
+      const inputUpdateTransactionDto: UpdateTransactionDto = {
+        label: 'Updated',
+      };
+      await expect(
+        service.updateTransaction(
+          mockUserId,
+          mockTransactionId,
+          inputUpdateTransactionDto,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prismaService.transaction.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('removeTransaction', () => {
+    it('should delete a transaction for the owner', async () => {
+      (prismaService.transaction.findUnique as jest.Mock).mockResolvedValue(
+        mockTransaction,
+      );
+      (prismaService.transaction.delete as jest.Mock).mockResolvedValue(
+        undefined,
+      );
+      await service.removeTransaction(mockUserId, mockTransactionId);
+      expect(prismaService.transaction.findUnique).toHaveBeenCalledWith({
+        where: { id: mockTransactionId },
+      });
+      expect(prismaService.transaction.delete).toHaveBeenCalledWith({
+        where: { id: mockTransactionId },
+      });
+    });
+
+    it('should adjust savings goal when deleting a savings transaction', async () => {
+      const savingsTransaction = {
+        ...mockTransaction,
+        type: TransactionType.SAVINGS,
+        goalId: mockGoalId,
+        value: 100,
+      };
+      (prismaService.transaction.findUnique as jest.Mock).mockResolvedValue(
+        savingsTransaction,
+      );
+      (prismaService.transaction.delete as jest.Mock).mockResolvedValue(
+        undefined,
+      );
+      await service.removeTransaction(mockUserId, mockTransactionId);
+      expect(prismaService.savingsGoal.update).toHaveBeenCalledWith({
+        where: { id: mockGoalId },
+        data: {
+          currentAmount: {
+            increment: -100,
+          },
+        },
+      });
+      expect(prismaService.transaction.delete).toHaveBeenCalledWith({
+        where: { id: mockTransactionId },
+      });
+    });
+
+    it('should throw NotFoundException when transaction does not exist', async () => {
+      (prismaService.transaction.findUnique as jest.Mock).mockResolvedValue(
+        null,
+      );
+      await expect(
+        service.removeTransaction(mockUserId, mockTransactionId),
+      ).rejects.toThrow(NotFoundException);
+      expect(prismaService.transaction.delete).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException when user does not own the transaction', async () => {
+      const otherUserTransaction = {
+        ...mockTransaction,
+        userId: mockOtherUserId,
+      };
+      (prismaService.transaction.findUnique as jest.Mock).mockResolvedValue(
+        otherUserTransaction,
+      );
+      await expect(
+        service.removeTransaction(mockUserId, mockTransactionId),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prismaService.transaction.delete).not.toHaveBeenCalled();
     });
   });
 });
