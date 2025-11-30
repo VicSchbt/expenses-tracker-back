@@ -85,6 +85,11 @@ model Transaction {
   recurrence Recurrence?
   isPaid     Boolean?    @default(false)
   dueDate    DateTime?
+  recurrenceEndDate DateTime?
+
+  parentTransaction   Transaction? @relation("RecurringTransactions", fields: [parentTransactionId], references: [id], onDelete: Cascade)
+  parentTransactionId String?
+  childTransactions   Transaction[] @relation("RecurringTransactions")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

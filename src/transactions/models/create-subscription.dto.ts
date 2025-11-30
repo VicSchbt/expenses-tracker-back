@@ -35,5 +35,13 @@ export class CreateSubscriptionDto {
   @IsEnum(Recurrence)
   @IsOptional()
   recurrence?: Recurrence;
+
+  @ApiPropertyOptional({
+    description: 'End date for recurrence (ISO 8601 format). If not provided, recurrence continues indefinitely.',
+    example: '2024-12-31',
+  })
+  @IsDateString()
+  @IsOptional()
+  recurrenceEndDate?: string;
 }
 

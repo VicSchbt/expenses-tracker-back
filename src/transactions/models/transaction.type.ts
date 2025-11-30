@@ -61,6 +61,20 @@ export class Transaction {
   recurrence: Recurrence | null;
 
   @ApiPropertyOptional({
+    description: 'End date for recurrence',
+    example: '2024-12-31T00:00:00.000Z',
+    nullable: true,
+  })
+  recurrenceEndDate: Date | null;
+
+  @ApiPropertyOptional({
+    description: 'Parent transaction ID for recurring transaction instances',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    nullable: true,
+  })
+  parentTransactionId: string | null;
+
+  @ApiPropertyOptional({
     description: 'Whether the transaction is paid',
     example: true,
     nullable: true,

@@ -18,6 +18,11 @@ import { PaginatedTransactions } from './models/paginated-transactions.type';
 import { GetExpensesRefundsQueryDto } from './models/get-expenses-refunds-query.dto';
 import { GetIncomeQueryDto } from './models/get-income-query.dto';
 import { UpdateTransactionDto } from './models/update-transaction.dto';
+import { DeleteTransactionQueryDto } from './models/delete-transaction-query.dto';
+import { RecurrenceScope } from './models/recurrence-scope.enum';
+import {
+  generateFutureOccurrenceDates,
+} from './utils/recurrence-date.util';
 
 @Injectable()
 export class TransactionsService {
@@ -27,51 +32,132 @@ export class TransactionsService {
     userId: string,
     createIncomeDto: CreateIncomeDto,
   ): Promise<Transaction> {
-    const transaction = await this.prisma.transaction.create({
+    const transactionDate = new Date(createIncomeDto.date);
+    const recurrenceEndDate = createIncomeDto.recurrenceEndDate
+      ? new Date(createIncomeDto.recurrenceEndDate)
+      : null;
+    const parentTransaction = await this.prisma.transaction.create({
       data: {
         userId,
         label: createIncomeDto.label,
-        date: new Date(createIncomeDto.date),
+        date: transactionDate,
         value: createIncomeDto.value,
         type: TransactionType.INCOME,
         recurrence: createIncomeDto.recurrence,
+        recurrenceEndDate,
       },
     });
-    return this.mapToTransactionType(transaction);
+    if (createIncomeDto.recurrence) {
+      const futureDates = generateFutureOccurrenceDates(
+        transactionDate,
+        createIncomeDto.recurrence,
+        recurrenceEndDate,
+        12,
+      );
+      if (futureDates.length > 0) {
+        await this.prisma.transaction.createMany({
+          data: futureDates.map((date) => ({
+            userId,
+            label: createIncomeDto.label,
+            date,
+            value: createIncomeDto.value,
+            type: TransactionType.INCOME,
+            recurrence: createIncomeDto.recurrence,
+            recurrenceEndDate,
+            parentTransactionId: parentTransaction.id,
+          })),
+        });
+      }
+    }
+    return this.mapToTransactionType(parentTransaction);
   }
 
   async createBill(
     userId: string,
     createBillDto: CreateBillDto,
   ): Promise<Transaction> {
-    const transaction = await this.prisma.transaction.create({
+    const transactionDate = new Date(createBillDto.date);
+    const recurrenceEndDate = createBillDto.recurrenceEndDate
+      ? new Date(createBillDto.recurrenceEndDate)
+      : null;
+    const parentTransaction = await this.prisma.transaction.create({
       data: {
         userId,
         label: createBillDto.label,
-        date: new Date(createBillDto.date),
+        date: transactionDate,
         value: createBillDto.value,
         type: TransactionType.BILL,
         recurrence: createBillDto.recurrence,
+        recurrenceEndDate,
       },
     });
-    return this.mapToTransactionType(transaction);
+    if (createBillDto.recurrence) {
+      const futureDates = generateFutureOccurrenceDates(
+        transactionDate,
+        createBillDto.recurrence,
+        recurrenceEndDate,
+        12,
+      );
+      if (futureDates.length > 0) {
+        await this.prisma.transaction.createMany({
+          data: futureDates.map((date) => ({
+            userId,
+            label: createBillDto.label,
+            date,
+            value: createBillDto.value,
+            type: TransactionType.BILL,
+            recurrence: createBillDto.recurrence,
+            recurrenceEndDate,
+            parentTransactionId: parentTransaction.id,
+          })),
+        });
+      }
+    }
+    return this.mapToTransactionType(parentTransaction);
   }
 
   async createSubscription(
     userId: string,
     createSubscriptionDto: CreateSubscriptionDto,
   ): Promise<Transaction> {
-    const transaction = await this.prisma.transaction.create({
+    const transactionDate = new Date(createSubscriptionDto.date);
+    const recurrenceEndDate = createSubscriptionDto.recurrenceEndDate
+      ? new Date(createSubscriptionDto.recurrenceEndDate)
+      : null;
+    const parentTransaction = await this.prisma.transaction.create({
       data: {
         userId,
         label: createSubscriptionDto.label,
-        date: new Date(createSubscriptionDto.date),
+        date: transactionDate,
         value: createSubscriptionDto.value,
         type: TransactionType.SUBSCRIPTION,
         recurrence: createSubscriptionDto.recurrence,
+        recurrenceEndDate,
       },
     });
-    return this.mapToTransactionType(transaction);
+    if (createSubscriptionDto.recurrence) {
+      const futureDates = generateFutureOccurrenceDates(
+        transactionDate,
+        createSubscriptionDto.recurrence,
+        recurrenceEndDate,
+        12,
+      );
+      if (futureDates.length > 0) {
+        await this.prisma.transaction.createMany({
+          data: futureDates.map((date) => ({
+            userId,
+            label: createSubscriptionDto.label,
+            date,
+            value: createSubscriptionDto.value,
+            type: TransactionType.SUBSCRIPTION,
+            recurrence: createSubscriptionDto.recurrence,
+            recurrenceEndDate,
+            parentTransactionId: parentTransaction.id,
+          })),
+        });
+      }
+    }
+    return this.mapToTransactionType(parentTransaction);
   }
 
   async createSaving(
@@ -155,6 +241,9 @@ export class TransactionsService {
   ): Promise<Transaction> {
     const existingTransaction = await this.prisma.transaction.findUnique({
       where: { id },
+      include: {
+        childTransactions: true,
+      },
     });
     if (!existingTransaction) {
       throw new NotFoundException('Transaction not found');
@@ -165,6 +254,9 @@ export class TransactionsService {
     if (updateTransactionDto.categoryId) {
       await this.validateCategoryOwnership(userId, updateTransactionDto.categoryId);
     }
+    const isRecurringParent = existingTransaction.recurrence !== null && !existingTransaction.parentTransactionId;
+    const isRecurringChild = existingTransaction.parentTransactionId !== null;
+    const scope = updateTransactionDto.recurrenceScope || RecurrenceScope.CURRENT_ONLY;
     const data: any = {};
     if (updateTransactionDto.label !== undefined) {
       data.label = updateTransactionDto.label;
@@ -187,6 +279,11 @@ export class TransactionsService {
     if (updateTransactionDto.dueDate !== undefined) {
       data.dueDate = new Date(updateTransactionDto.dueDate);
     }
+    if (updateTransactionDto.recurrenceEndDate !== undefined) {
+      data.recurrenceEndDate = updateTransactionDto.recurrenceEndDate
+        ? new Date(updateTransactionDto.recurrenceEndDate)
+        : null;
+    }
     if (
       existingTransaction.type === TransactionType.SAVINGS &&
       updateTransactionDto.value !== undefined &&
@@ -205,6 +302,97 @@ export class TransactionsService {
         });
       }
     }
+    if (isRecurringParent || isRecurringChild) {
+      const parentId = isRecurringParent ? id : existingTransaction.parentTransactionId!;
+      if (scope === RecurrenceScope.ALL) {
+        const affectedTransactions = await this.prisma.transaction.findMany({
+          where: {
+            OR: [
+              { id: parentId },
+              { parentTransactionId: parentId },
+            ],
+          },
+        });
+        if (
+          existingTransaction.type === TransactionType.SAVINGS &&
+          updateTransactionDto.value !== undefined &&
+          existingTransaction.goalId
+        ) {
+          const existingValue = Number(existingTransaction.value);
+          const newValue = updateTransactionDto.value;
+          const difference = newValue - existingValue;
+          if (difference !== 0) {
+            const affectedCount = affectedTransactions.filter(
+              (t) => t.goalId === existingTransaction.goalId,
+            ).length;
+            await this.prisma.savingsGoal.update({
+              where: { id: existingTransaction.goalId },
+              data: {
+                currentAmount: {
+                  increment: difference * affectedCount,
+                },
+              },
+            });
+          }
+        }
+        await this.prisma.transaction.updateMany({
+          where: {
+            OR: [
+              { id: parentId },
+              { parentTransactionId: parentId },
+            ],
+          },
+          data,
+        });
+      } else if (scope === RecurrenceScope.CURRENT_AND_FUTURE) {
+        const currentDate = existingTransaction.date;
+        const affectedTransactions = await this.prisma.transaction.findMany({
+          where: {
+            OR: [
+              { id: parentId },
+              {
+                parentTransactionId: parentId,
+                date: { gte: currentDate },
+              },
+            ],
+          },
+        });
+        if (
+          existingTransaction.type === TransactionType.SAVINGS &&
+          updateTransactionDto.value !== undefined &&
+          existingTransaction.goalId
+        ) {
+          const existingValue = Number(existingTransaction.value);
+          const newValue = updateTransactionDto.value;
+          const difference = newValue - existingValue;
+          if (difference !== 0) {
+            const affectedCount = affectedTransactions.filter(
+              (t) => t.goalId === existingTransaction.goalId,
+            ).length;
+            await this.prisma.savingsGoal.update({
+              where: { id: existingTransaction.goalId },
+              data: {
+                currentAmount: {
+                  increment: difference * affectedCount,
+                },
+              },
+            });
+          }
+        }
+        await this.prisma.transaction.updateMany({
+          where: {
+            OR: [
+              { id: parentId },
+              {
+                parentTransactionId: parentId,
+                date: { gte: currentDate },
+              },
+            ],
+          },
+          data,
+        });
+      }
+    }
     const updatedTransaction = await this.prisma.transaction.update({
       where: { id },
       data,
@@ -212,15 +400,104 @@ export class TransactionsService {
     return this.mapToTransactionType(updatedTransaction);
   }
 
-  async removeTransaction(userId: string, id: string): Promise<void> {
+  async removeTransaction(
+    userId: string,
+    id: string,
+    queryDto?: DeleteTransactionQueryDto,
+  ): Promise<void> {
     const existingTransaction = await this.prisma.transaction.findUnique({
       where: { id },
+      include: {
+        childTransactions: true,
+      },
     });
     if (!existingTransaction) {
       throw new NotFoundException('Transaction not found');
     }
     if (existingTransaction.userId !== userId) {
       throw new ForbiddenException('You do not have access to this transaction');
+    }
+    const isRecurringParent = existingTransaction.recurrence !== null && !existingTransaction.parentTransactionId;
+    const isRecurringChild = existingTransaction.parentTransactionId !== null;
+    const scope = queryDto?.recurrenceScope || RecurrenceScope.CURRENT_ONLY;
+    if (isRecurringParent || isRecurringChild) {
+      const parentId = isRecurringParent ? id : existingTransaction.parentTransactionId!;
+      if (scope === RecurrenceScope.ALL) {
+        const allTransactions = await this.prisma.transaction.findMany({
+          where: {
+            OR: [
+              { id: parentId },
+              { parentTransactionId: parentId },
+            ],
+          },
+        });
+        for (const transaction of allTransactions) {
+          if (
+            transaction.type === TransactionType.SAVINGS &&
+            transaction.goalId
+          ) {
+            const value = Number(transaction.value);
+            await this.prisma.savingsGoal.update({
+              where: { id: transaction.goalId },
+              data: {
+                currentAmount: {
+                  increment: -value,
+                },
+              },
+            });
+          }
+        }
+        await this.prisma.transaction.deleteMany({
+          where: {
+            OR: [
+              { id: parentId },
+              { parentTransactionId: parentId },
+            ],
+          },
+        });
+        return;
+      } else if (scope === RecurrenceScope.CURRENT_AND_FUTURE) {
+        const currentDate = existingTransaction.date;
+        const futureTransactions = await this.prisma.transaction.findMany({
+          where: {
+            OR: [
+              { id: parentId },
+              {
+                parentTransactionId: parentId,
+                date: { gte: currentDate },
+              },
+            ],
+          },
+        });
+        for (const transaction of futureTransactions) {
+          if (
+            transaction.type === TransactionType.SAVINGS &&
+            transaction.goalId
+          ) {
+            const value = Number(transaction.value);
+            await this.prisma.savingsGoal.update({
+              where: { id: transaction.goalId },
+              data: {
+                currentAmount: {
+                  increment: -value,
+                },
+              },
+            });
+          }
+        }
+        await this.prisma.transaction.deleteMany({
+          where: {
+            OR: [
+              { id: parentId },
+              {
+                parentTransactionId: parentId,
+                date: { gte: currentDate },
+              },
+            ],
+          },
+        });
+        return;
+      }
     }
     if (
       existingTransaction.type === TransactionType.SAVINGS &&
@@ -594,6 +871,8 @@ export class TransactionsService {
     categoryId: string | null;
     goalId: string | null;
     recurrence: any;
+    recurrenceEndDate: Date | null;
+    parentTransactionId: string | null;
     isPaid: boolean | null;
     dueDate: Date | null;
     createdAt: Date;
@@ -609,6 +888,8 @@ export class TransactionsService {
       categoryId: transaction.categoryId,
       goalId: transaction.goalId,
       recurrence: transaction.recurrence,
+      recurrenceEndDate: transaction.recurrenceEndDate,
+      parentTransactionId: transaction.parentTransactionId,
       isPaid: transaction.isPaid,
       dueDate: transaction.dueDate,
       createdAt: transaction.createdAt,

@@ -7,6 +7,8 @@ import { TransactionsService } from './transactions.service';
 import { PrismaService } from 'prisma/prisma.service';
 import { TransactionType, Recurrence } from '@prisma/client';
 import { UpdateTransactionDto } from './models/update-transaction.dto';
+import { DeleteTransactionQueryDto } from './models/delete-transaction-query.dto';
+import { RecurrenceScope } from './models/recurrence-scope.enum';
 import { CreateIncomeDto } from './models/create-income.dto';
 import { CreateBillDto } from './models/create-bill.dto';
 import { CreateSubscriptionDto } from './models/create-subscription.dto';
@@ -54,6 +56,8 @@ describe('TransactionsService', () => {
     categoryId: null,
     goalId: null,
     recurrence: null,
+    recurrenceEndDate: null,
+    parentTransactionId: null,
     isPaid: null,
     dueDate: null,
     createdAt: new Date(),
@@ -64,9 +68,14 @@ describe('TransactionsService', () => {
     const mockPrismaService = {
       transaction: {
         create: jest.fn(),
+        createMany: jest.fn(),
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
+        findMany: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn(),
         delete: jest.fn(),
+        deleteMany: jest.fn(),
       },
       category: {
         findUnique: jest.fn(),
@@ -103,17 +112,22 @@ describe('TransactionsService', () => {
       recurrence: Recurrence.MONTHLY,
     };
 
-    it('should create an income transaction successfully with recurrence', async () => {
+    it('should create an income transaction successfully with recurrence and generate future instances', async () => {
       const expectedTransaction = {
         ...mockTransaction,
         label: inputCreateIncomeDto.label,
         value: inputCreateIncomeDto.value,
         type: TransactionType.INCOME,
         recurrence: inputCreateIncomeDto.recurrence,
+        recurrenceEndDate: null,
+        parentTransactionId: null,
       };
       (prismaService.transaction.create as jest.Mock).mockResolvedValue(
         expectedTransaction,
       );
+      (prismaService.transaction.createMany as jest.Mock).mockResolvedValue({
+        count: 12,
+      });
 
       const actualResult = await service.createIncome(
         mockUserId,
@@ -130,6 +144,8 @@ describe('TransactionsService', () => {
         categoryId: null,
         goalId: null,
         recurrence: inputCreateIncomeDto.recurrence,
+        recurrenceEndDate: null,
+        parentTransactionId: null,
         isPaid: null,
         dueDate: null,
         createdAt: expectedTransaction.createdAt,
@@ -143,8 +159,10 @@ describe('TransactionsService', () => {
           value: inputCreateIncomeDto.value,
           type: TransactionType.INCOME,
           recurrence: inputCreateIncomeDto.recurrence,
+          recurrenceEndDate: null,
         },
       });
+      expect(prismaService.transaction.createMany).toHaveBeenCalled();
     });
 
     it('should create an income transaction successfully without recurrence', async () => {
@@ -179,6 +197,46 @@ describe('TransactionsService', () => {
           value: inputDtoWithoutRecurrence.value,
           type: TransactionType.INCOME,
           recurrence: undefined,
+          recurrenceEndDate: null,
+        },
+      });
+      expect(prismaService.transaction.createMany).not.toHaveBeenCalled();
+    });
+
+    it('should create an income transaction with recurrenceEndDate', async () => {
+      const inputDtoWithEndDate: CreateIncomeDto = {
+        label: 'Salary',
+        date: mockDate,
+        value: 5000,
+        recurrence: Recurrence.MONTHLY,
+        recurrenceEndDate: '2024-12-31',
+      };
+      const expectedTransaction = {
+        ...mockTransaction,
+        label: inputDtoWithEndDate.label,
+        value: inputDtoWithEndDate.value,
+        type: TransactionType.INCOME,
+        recurrence: inputDtoWithEndDate.recurrence,
+        recurrenceEndDate: new Date(inputDtoWithEndDate.recurrenceEndDate),
+      };
+      (prismaService.transaction.create as jest.Mock).mockResolvedValue(
+        expectedTransaction,
+      );
+      (prismaService.transaction.createMany as jest.Mock).mockResolvedValue({
+        count: 11,
+      });
+
+      await service.createIncome(mockUserId, inputDtoWithEndDate);
+
+      expect(prismaService.transaction.create).toHaveBeenCalledWith({
+        data: {
+          userId: mockUserId,
+          label: inputDtoWithEndDate.label,
+          date: new Date(inputDtoWithEndDate.date),
+          value: inputDtoWithEndDate.value,
+          type: TransactionType.INCOME,
+          recurrence: inputDtoWithEndDate.recurrence,
+          recurrenceEndDate: new Date(inputDtoWithEndDate.recurrenceEndDate),
         },
       });
     });
@@ -218,8 +276,10 @@ describe('TransactionsService', () => {
           value: inputCreateBillDto.value,
           type: TransactionType.BILL,
           recurrence: inputCreateBillDto.recurrence,
+          recurrenceEndDate: null,
         },
       });
+      expect(prismaService.transaction.createMany).toHaveBeenCalled();
     });
   });
 
@@ -257,8 +317,10 @@ describe('TransactionsService', () => {
           value: inputCreateSubscriptionDto.value,
           type: TransactionType.SUBSCRIPTION,
           recurrence: inputCreateSubscriptionDto.recurrence,
+          recurrenceEndDate: null,
         },
       });
+      expect(prismaService.transaction.createMany).toHaveBeenCalled();
     });
   });
 
@@ -533,7 +595,7 @@ describe('TransactionsService', () => {
         label: 'Updated label',
         value: 200,
       };
-      const existingTransaction = { ...mockTransaction };
+      const existingTransaction = { ...mockTransaction, childTransactions: [] };
       const updatedTransaction = {
         ...existingTransaction,
         label: inputUpdateTransactionDto.label,
@@ -554,6 +616,7 @@ describe('TransactionsService', () => {
       expect(actualResult.value).toBe(inputUpdateTransactionDto.value);
       expect(prismaService.transaction.findUnique).toHaveBeenCalledWith({
         where: { id: mockTransactionId },
+        include: { childTransactions: true },
       });
       expect(prismaService.transaction.update).toHaveBeenCalledWith({
         where: { id: mockTransactionId },
@@ -562,6 +625,40 @@ describe('TransactionsService', () => {
           value: inputUpdateTransactionDto.value,
         },
       });
+    });
+
+    it('should update all recurring transactions when scope is ALL', async () => {
+      const parentTransaction = {
+        ...mockTransaction,
+        recurrence: Recurrence.MONTHLY,
+        parentTransactionId: null,
+        childTransactions: [],
+      };
+      const inputUpdateTransactionDto: UpdateTransactionDto = {
+        label: 'Updated label',
+        recurrenceScope: RecurrenceScope.ALL,
+      };
+      (prismaService.transaction.findUnique as jest.Mock).mockResolvedValue(
+        parentTransaction,
+      );
+      (prismaService.transaction.findMany as jest.Mock).mockResolvedValue([
+        parentTransaction,
+      ]);
+      (prismaService.transaction.updateMany as jest.Mock).mockResolvedValue({
+        count: 1,
+      });
+      (prismaService.transaction.update as jest.Mock).mockResolvedValue({
+        ...parentTransaction,
+        label: inputUpdateTransactionDto.label,
+      });
+
+      await service.updateTransaction(
+        mockUserId,
+        mockTransactionId,
+        inputUpdateTransactionDto,
+      );
+
+      expect(prismaService.transaction.updateMany).toHaveBeenCalled();
     });
 
     it('should adjust savings goal when updating a savings transaction value', async () => {
@@ -647,19 +744,46 @@ describe('TransactionsService', () => {
 
   describe('removeTransaction', () => {
     it('should delete a transaction for the owner', async () => {
-      (prismaService.transaction.findUnique as jest.Mock).mockResolvedValue(
-        mockTransaction,
-      );
+      (prismaService.transaction.findUnique as jest.Mock).mockResolvedValue({
+        ...mockTransaction,
+        childTransactions: [],
+      });
       (prismaService.transaction.delete as jest.Mock).mockResolvedValue(
         undefined,
       );
       await service.removeTransaction(mockUserId, mockTransactionId);
       expect(prismaService.transaction.findUnique).toHaveBeenCalledWith({
         where: { id: mockTransactionId },
+        include: { childTransactions: true },
       });
       expect(prismaService.transaction.delete).toHaveBeenCalledWith({
         where: { id: mockTransactionId },
       });
+    });
+
+    it('should delete all recurring transactions when scope is ALL', async () => {
+      const parentTransaction = {
+        ...mockTransaction,
+        recurrence: Recurrence.MONTHLY,
+        parentTransactionId: null,
+        childTransactions: [],
+      };
+      const queryDto: DeleteTransactionQueryDto = {
+        recurrenceScope: RecurrenceScope.ALL,
+      };
+      (prismaService.transaction.findUnique as jest.Mock).mockResolvedValue(
+        parentTransaction,
+      );
+      (prismaService.transaction.findMany as jest.Mock).mockResolvedValue([
+        parentTransaction,
+      ]);
+      (prismaService.transaction.deleteMany as jest.Mock).mockResolvedValue({
+        count: 1,
+      });
+
+      await service.removeTransaction(mockUserId, mockTransactionId, queryDto);
+
+      expect(prismaService.transaction.deleteMany).toHaveBeenCalled();
     });
 
     it('should adjust savings goal when deleting a savings transaction', async () => {

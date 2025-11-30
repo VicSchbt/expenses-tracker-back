@@ -38,6 +38,8 @@ describe('TransactionsController', () => {
     categoryId: null,
     goalId: null,
     recurrence: null,
+    recurrenceEndDate: null,
+    parentTransactionId: null,
     isPaid: null,
     dueDate: null,
     createdAt: new Date(),
@@ -358,6 +360,25 @@ describe('TransactionsController', () => {
       expect(transactionsService.removeTransaction).toHaveBeenCalledWith(
         mockUserId,
         mockTransactionId,
+        undefined,
+      );
+    });
+
+    it('should delete a transaction with recurrence scope', async () => {
+      const queryDto = { recurrenceScope: 'CURRENT_ONLY' };
+      transactionsService.removeTransaction.mockResolvedValue(undefined);
+      const actualResult = await controller.removeTransaction(
+        mockRequest as any,
+        mockTransactionId,
+        queryDto,
+      );
+      expect(actualResult).toEqual({
+        message: 'Transaction deleted successfully',
+      });
+      expect(transactionsService.removeTransaction).toHaveBeenCalledWith(
+        mockUserId,
+        mockTransactionId,
+        queryDto,
       );
     });
   });

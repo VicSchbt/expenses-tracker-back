@@ -32,6 +32,7 @@ import { PaginatedTransactions } from './models/paginated-transactions.type';
 import { GetExpensesRefundsQueryDto } from './models/get-expenses-refunds-query.dto';
 import { GetIncomeQueryDto } from './models/get-income-query.dto';
 import { UpdateTransactionDto } from './models/update-transaction.dto';
+import { DeleteTransactionQueryDto } from './models/delete-transaction-query.dto';
 
 @ApiTags('transactions')
 @Controller('transactions')
@@ -300,7 +301,11 @@ export class TransactionsController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete a transaction' })
+  @ApiOperation({
+    summary: 'Delete a transaction',
+    description:
+      'Deletes a transaction. For recurring transactions, you can specify the scope: CURRENT_ONLY (default), CURRENT_AND_FUTURE, or ALL.',
+  })
   @ApiParam({ name: 'id', description: 'Transaction ID' })
   @ApiResponse({
     status: 200,
@@ -311,8 +316,9 @@ export class TransactionsController {
   async removeTransaction(
     @Request() req: { user: { id: string; email: string } },
     @Param('id') id: string,
+    @Query() queryDto: DeleteTransactionQueryDto,
   ): Promise<{ message: string }> {
-    await this.transactionsService.removeTransaction(req.user.id, id);
+    await this.transactionsService.removeTransaction(req.user.id, id, queryDto);
     return { message: 'Transaction deleted successfully' };
   }
 
