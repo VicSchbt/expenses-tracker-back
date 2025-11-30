@@ -16,6 +16,7 @@ import { Transaction } from './models/transaction.type';
 import { MonthlyBalance } from './models/monthly-balance.type';
 import { PaginatedTransactions } from './models/paginated-transactions.type';
 import { GetExpensesRefundsQueryDto } from './models/get-expenses-refunds-query.dto';
+import { GetIncomeQueryDto } from './models/get-income-query.dto';
 import { UpdateTransactionDto } from './models/update-transaction.dto';
 
 @Injectable()
@@ -432,6 +433,120 @@ export class TransactionsService {
       type: {
         in: [TransactionType.EXPENSE, TransactionType.REFUND],
       },
+      date: {
+        gte: startDate,
+        lte: endDate,
+      },
+    };
+    const [transactions, total] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where: whereClause,
+        skip,
+        take: limit,
+        orderBy: {
+          date: 'desc',
+        },
+      }),
+      this.prisma.transaction.count({
+        where: whereClause,
+      }),
+    ]);
+    const totalPages = Math.ceil(total / limit);
+    const mappedTransactions = transactions.map((transaction) =>
+      this.mapToTransactionType(transaction),
+    );
+    return {
+      data: mappedTransactions,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    };
+  }
+
+  /**
+   * Fetches all income transactions for a user with pagination and optional month filtering.
+   * - If year and month are provided: filters by that specific month
+   * - If only month is provided: uses current year with the specified month
+   * - If neither is provided: returns all income transactions (no month filter)
+   */
+  async getIncome(
+    userId: string,
+    queryDto: GetIncomeQueryDto,
+  ): Promise<PaginatedTransactions> {
+    const page = queryDto.page ?? 1;
+    const limit = queryDto.limit ?? 20;
+    const skip = (page - 1) * limit;
+    const now = new Date();
+    let year = queryDto.year;
+    let month = queryDto.month;
+    if (year && !month) {
+      throw new BadRequestException(
+        'Month is required when year is provided',
+      );
+    }
+    if (month && !year) {
+      year = now.getFullYear();
+    }
+    const whereClause: any = {
+      userId,
+      type: TransactionType.INCOME,
+    };
+    if (year && month) {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+      whereClause.date = {
+        gte: startDate,
+        lte: endDate,
+      };
+    }
+    const [transactions, total] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where: whereClause,
+        skip,
+        take: limit,
+        orderBy: {
+          date: 'desc',
+        },
+      }),
+      this.prisma.transaction.count({
+        where: whereClause,
+      }),
+    ]);
+    const totalPages = Math.ceil(total / limit);
+    const mappedTransactions = transactions.map((transaction) =>
+      this.mapToTransactionType(transaction),
+    );
+    return {
+      data: mappedTransactions,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    };
+  }
+
+  /**
+   * Fetches income transactions for the current month with pagination.
+   */
+  async getCurrentMonthIncome(
+    userId: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<PaginatedTransactions> {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+    const skip = (page - 1) * limit;
+    const whereClause = {
+      userId,
+      type: TransactionType.INCOME,
       date: {
         gte: startDate,
         lte: endDate,

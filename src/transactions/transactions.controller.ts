@@ -30,6 +30,7 @@ import { Transaction } from './models/transaction.type';
 import { MonthlyBalance } from './models/monthly-balance.type';
 import { PaginatedTransactions } from './models/paginated-transactions.type';
 import { GetExpensesRefundsQueryDto } from './models/get-expenses-refunds-query.dto';
+import { GetIncomeQueryDto } from './models/get-income-query.dto';
 import { UpdateTransactionDto } from './models/update-transaction.dto';
 
 @ApiTags('transactions')
@@ -187,6 +188,55 @@ export class TransactionsController {
       throw new BadRequestException('Page and limit must be valid numbers');
     }
     return this.transactionsService.getCurrentMonthExpensesAndRefunds(
+      req.user.id,
+      pageNumber,
+      limitNumber,
+    );
+  }
+
+  @Get('income')
+  @ApiOperation({
+    summary: 'Get income transactions',
+    description:
+      'Fetches all income transactions for the user with pagination. Can filter by month/year or get all transactions. If only month is provided, uses current year. If neither year nor month is provided, returns all transactions.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Income transactions successfully retrieved',
+    type: PaginatedTransactions,
+  })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getIncome(
+    @Request() req: { user: { id: string; email: string } },
+    @Query() queryDto: GetIncomeQueryDto,
+  ): Promise<PaginatedTransactions> {
+    return this.transactionsService.getIncome(req.user.id, queryDto);
+  }
+
+  @Get('income/current-month')
+  @ApiOperation({
+    summary: 'Get current month income transactions',
+    description:
+      'Fetches income transactions for the current month with pagination.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Current month income transactions successfully retrieved',
+    type: PaginatedTransactions,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getCurrentMonthIncome(
+    @Request() req: { user: { id: string; email: string } },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ): Promise<PaginatedTransactions> {
+    const pageNumber = page ? parseInt(page, 10) : 1;
+    const limitNumber = limit ? parseInt(limit, 10) : 20;
+    if (isNaN(pageNumber) || isNaN(limitNumber)) {
+      throw new BadRequestException('Page and limit must be valid numbers');
+    }
+    return this.transactionsService.getCurrentMonthIncome(
       req.user.id,
       pageNumber,
       limitNumber,
