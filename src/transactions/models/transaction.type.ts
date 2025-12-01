@@ -81,13 +81,6 @@ export class Transaction {
   })
   isPaid: boolean | null;
 
-  @ApiPropertyOptional({
-    description: 'Due date for the transaction',
-    example: '2024-01-15T00:00:00.000Z',
-    nullable: true,
-  })
-  dueDate: Date | null;
-
   @ApiProperty({
     description: 'Creation timestamp',
     example: '2024-01-15T00:00:00.000Z',

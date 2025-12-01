@@ -91,7 +91,6 @@ export class RecurringTransactionsScheduler {
               recurrenceEndDate: parent.recurrenceEndDate,
               parentTransactionId: parent.id,
               isPaid: parent.isPaid,
-              dueDate: parent.dueDate,
             })),
           });
           generatedCount += futureDates.length;

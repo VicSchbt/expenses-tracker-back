@@ -1,5 +1,5 @@
-import { IsNotEmpty, IsString, IsDateString, IsNumber } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsString, IsDateString, IsNumber, IsOptional, IsBoolean } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateSavingDto {
   @ApiProperty({
@@ -25,5 +25,13 @@ export class CreateSavingDto {
   @IsDateString()
   @IsNotEmpty()
   date: string;
+
+  @ApiPropertyOptional({
+    description: 'Whether the saving is paid',
+    example: true,
+  })
+  @IsBoolean()
+  @IsOptional()
+  isPaid?: boolean;
 }
 

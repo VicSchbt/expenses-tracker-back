@@ -45,6 +45,7 @@ export class TransactionsService {
         type: TransactionType.INCOME,
         recurrence: createIncomeDto.recurrence,
         recurrenceEndDate,
+        isPaid: createIncomeDto.isPaid ?? true,
       },
     });
     if (createIncomeDto.recurrence) {
@@ -65,6 +66,7 @@ export class TransactionsService {
             recurrence: createIncomeDto.recurrence,
             recurrenceEndDate,
             parentTransactionId: parentTransaction.id,
+            isPaid: createIncomeDto.isPaid ?? true,
           })),
         });
       }
@@ -89,6 +91,7 @@ export class TransactionsService {
         type: TransactionType.BILL,
         recurrence: createBillDto.recurrence,
         recurrenceEndDate,
+        isPaid: createBillDto.isPaid ?? true,
       },
     });
     if (createBillDto.recurrence) {
@@ -109,6 +112,7 @@ export class TransactionsService {
             recurrence: createBillDto.recurrence,
             recurrenceEndDate,
             parentTransactionId: parentTransaction.id,
+            isPaid: createBillDto.isPaid ?? true,
           })),
         });
       }
@@ -133,6 +137,7 @@ export class TransactionsService {
         type: TransactionType.SUBSCRIPTION,
         recurrence: createSubscriptionDto.recurrence,
         recurrenceEndDate,
+        isPaid: createSubscriptionDto.isPaid ?? true,
       },
     });
     if (createSubscriptionDto.recurrence) {
@@ -153,6 +158,7 @@ export class TransactionsService {
             recurrence: createSubscriptionDto.recurrence,
             recurrenceEndDate,
             parentTransactionId: parentTransaction.id,
+            isPaid: createSubscriptionDto.isPaid ?? true,
           })),
         });
       }
@@ -183,6 +189,7 @@ export class TransactionsService {
         value: createSavingDto.value,
         type: TransactionType.SAVINGS,
         goalId: createSavingDto.goalId,
+        isPaid: createSavingDto.isPaid ?? true,
       },
     });
     await this.prisma.savingsGoal.update({
@@ -211,6 +218,7 @@ export class TransactionsService {
         value: createExpenseDto.value,
         type: TransactionType.EXPENSE,
         categoryId: createExpenseDto.categoryId,
+        isPaid: createExpenseDto.isPaid ?? true,
       },
     });
     return this.mapToTransactionType(transaction);
@@ -229,6 +237,7 @@ export class TransactionsService {
         value: createRefundDto.value,
         type: TransactionType.REFUND,
         categoryId: createRefundDto.categoryId,
+        isPaid: createRefundDto.isPaid ?? true,
       },
     });
     return this.mapToTransactionType(transaction);
@@ -283,9 +292,6 @@ export class TransactionsService {
     }
     if (updateTransactionDto.isPaid !== undefined) {
       data.isPaid = updateTransactionDto.isPaid;
-    }
-    if (updateTransactionDto.dueDate !== undefined) {
-      data.dueDate = new Date(updateTransactionDto.dueDate);
     }
     if (updateTransactionDto.recurrenceEndDate !== undefined) {
       data.recurrenceEndDate = updateTransactionDto.recurrenceEndDate
@@ -556,10 +562,7 @@ export class TransactionsService {
     const transactions = await this.prisma.transaction.findMany({
       where: {
         userId,
-        OR: [
-          { date: { gte: startDate, lte: endDate } },
-          { dueDate: { gte: startDate, lte: endDate } },
-        ],
+        date: { gte: startDate, lte: endDate },
       },
     });
     let totalIncome = 0;
@@ -570,42 +573,24 @@ export class TransactionsService {
     let totalRefunds = 0;
     transactions.forEach((transaction) => {
       const value = Number(transaction.value);
-      const transactionDate = transaction.date;
-      const dueDate = transaction.dueDate;
-      const isInMonth = this.isDateInMonth(transactionDate, year, month);
-      const isDueInMonth = dueDate
-        ? this.isDateInMonth(dueDate, year, month)
-        : false;
       switch (transaction.type) {
         case TransactionType.INCOME:
-          if (isInMonth) {
-            totalIncome += value;
-          }
+          totalIncome += value;
           break;
         case TransactionType.BILL:
-          if (isInMonth || isDueInMonth) {
-            totalBills += value;
-          }
+          totalBills += value;
           break;
         case TransactionType.SAVINGS:
-          if (isInMonth || isDueInMonth) {
-            totalSavings += value;
-          }
+          totalSavings += value;
           break;
         case TransactionType.SUBSCRIPTION:
-          if (isInMonth || isDueInMonth) {
-            totalSubscriptions += value;
-          }
+          totalSubscriptions += value;
           break;
         case TransactionType.EXPENSE:
-          if (isInMonth) {
-            totalExpenses += value;
-          }
+          totalExpenses += value;
           break;
         case TransactionType.REFUND:
-          if (isInMonth) {
-            totalRefunds += value;
-          }
+          totalRefunds += value;
           break;
       }
     });
@@ -1115,7 +1100,6 @@ export class TransactionsService {
       recurrenceEndDate: transaction.recurrenceEndDate,
       parentTransactionId: transaction.parentTransactionId,
       isPaid: transaction.isPaid,
-      dueDate: transaction.dueDate,
       createdAt: transaction.createdAt,
       updatedAt: transaction.updatedAt,
     };

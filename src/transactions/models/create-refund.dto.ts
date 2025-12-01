@@ -1,5 +1,5 @@
-import { IsNotEmpty, IsString, IsDateString, IsNumber } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsString, IsDateString, IsNumber, IsOptional, IsBoolean } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateRefundDto {
   @ApiProperty({
@@ -33,5 +33,13 @@ export class CreateRefundDto {
   @IsString()
   @IsNotEmpty()
   categoryId: string;
+
+  @ApiPropertyOptional({
+    description: 'Whether the refund is paid',
+    example: true,
+  })
+  @IsBoolean()
+  @IsOptional()
+  isPaid?: boolean;
 }
 

@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsDateString, IsNumber, IsOptional, IsEnum } from 'class-validator';
+import { IsNotEmpty, IsString, IsDateString, IsNumber, IsOptional, IsEnum, IsBoolean } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Recurrence } from '@prisma/client';
 
@@ -43,5 +43,13 @@ export class CreateSubscriptionDto {
   @IsDateString()
   @IsOptional()
   recurrenceEndDate?: string;
+
+  @ApiPropertyOptional({
+    description: 'Whether the subscription is paid',
+    example: true,
+  })
+  @IsBoolean()
+  @IsOptional()
+  isPaid?: boolean;
 }
 

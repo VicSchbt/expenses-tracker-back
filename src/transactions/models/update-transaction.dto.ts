@@ -64,14 +64,6 @@ export class UpdateTransactionDto {
   isPaid?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Due date for the transaction (ISO 8601 format)',
-    example: '2024-01-31',
-  })
-  @IsDateString()
-  @IsOptional()
-  dueDate?: string;
-
-  @ApiPropertyOptional({
     description: 'End date for recurrence (ISO 8601 format)',
     example: '2024-12-31',
   })
