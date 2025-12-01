@@ -17,12 +17,12 @@ import { MonthlyBalance } from './models/monthly-balance.type';
 import { PaginatedTransactions } from './models/paginated-transactions.type';
 import { GetExpensesRefundsQueryDto } from './models/get-expenses-refunds-query.dto';
 import { GetIncomeQueryDto } from './models/get-income-query.dto';
+import { GetBillsQueryDto } from './models/get-bills-query.dto';
+import { GetSubscriptionsQueryDto } from './models/get-subscriptions-query.dto';
 import { UpdateTransactionDto } from './models/update-transaction.dto';
 import { DeleteTransactionQueryDto } from './models/delete-transaction-query.dto';
 import { RecurrenceScope } from './models/recurrence-scope.enum';
-import {
-  generateFutureOccurrenceDates,
-} from './utils/recurrence-date.util';
+import { generateFutureOccurrenceDates } from './utils/recurrence-date.util';
 
 @Injectable()
 export class TransactionsService {
@@ -249,14 +249,22 @@ export class TransactionsService {
       throw new NotFoundException('Transaction not found');
     }
     if (existingTransaction.userId !== userId) {
-      throw new ForbiddenException('You do not have access to this transaction');
+      throw new ForbiddenException(
+        'You do not have access to this transaction',
+      );
     }
     if (updateTransactionDto.categoryId) {
-      await this.validateCategoryOwnership(userId, updateTransactionDto.categoryId);
+      await this.validateCategoryOwnership(
+        userId,
+        updateTransactionDto.categoryId,
+      );
     }
-    const isRecurringParent = existingTransaction.recurrence !== null && !existingTransaction.parentTransactionId;
+    const isRecurringParent =
+      existingTransaction.recurrence !== null &&
+      !existingTransaction.parentTransactionId;
     const isRecurringChild = existingTransaction.parentTransactionId !== null;
-    const scope = updateTransactionDto.recurrenceScope || RecurrenceScope.CURRENT_ONLY;
+    const scope =
+      updateTransactionDto.recurrenceScope || RecurrenceScope.CURRENT_ONLY;
     const data: any = {};
     if (updateTransactionDto.label !== undefined) {
       data.label = updateTransactionDto.label;
@@ -303,14 +311,13 @@ export class TransactionsService {
       }
     }
     if (isRecurringParent || isRecurringChild) {
-      const parentId = isRecurringParent ? id : existingTransaction.parentTransactionId!;
+      const parentId = isRecurringParent
+        ? id
+        : existingTransaction.parentTransactionId!;
       if (scope === RecurrenceScope.ALL) {
         const affectedTransactions = await this.prisma.transaction.findMany({
           where: {
-            OR: [
-              { id: parentId },
-              { parentTransactionId: parentId },
-            ],
+            OR: [{ id: parentId }, { parentTransactionId: parentId }],
           },
         });
         if (
@@ -337,10 +344,7 @@ export class TransactionsService {
         }
         await this.prisma.transaction.updateMany({
           where: {
-            OR: [
-              { id: parentId },
-              { parentTransactionId: parentId },
-            ],
+            OR: [{ id: parentId }, { parentTransactionId: parentId }],
           },
           data,
         });
@@ -415,20 +419,23 @@ export class TransactionsService {
       throw new NotFoundException('Transaction not found');
     }
     if (existingTransaction.userId !== userId) {
-      throw new ForbiddenException('You do not have access to this transaction');
+      throw new ForbiddenException(
+        'You do not have access to this transaction',
+      );
     }
-    const isRecurringParent = existingTransaction.recurrence !== null && !existingTransaction.parentTransactionId;
+    const isRecurringParent =
+      existingTransaction.recurrence !== null &&
+      !existingTransaction.parentTransactionId;
     const isRecurringChild = existingTransaction.parentTransactionId !== null;
     const scope = queryDto?.recurrenceScope || RecurrenceScope.CURRENT_ONLY;
     if (isRecurringParent || isRecurringChild) {
-      const parentId = isRecurringParent ? id : existingTransaction.parentTransactionId!;
+      const parentId = isRecurringParent
+        ? id
+        : existingTransaction.parentTransactionId!;
       if (scope === RecurrenceScope.ALL) {
         const allTransactions = await this.prisma.transaction.findMany({
           where: {
-            OR: [
-              { id: parentId },
-              { parentTransactionId: parentId },
-            ],
+            OR: [{ id: parentId }, { parentTransactionId: parentId }],
           },
         });
         for (const transaction of allTransactions) {
@@ -449,10 +456,7 @@ export class TransactionsService {
         }
         await this.prisma.transaction.deleteMany({
           where: {
-            OR: [
-              { id: parentId },
-              { parentTransactionId: parentId },
-            ],
+            OR: [{ id: parentId }, { parentTransactionId: parentId }],
           },
         });
         return;
@@ -642,9 +646,7 @@ export class TransactionsService {
     let year = queryDto.year;
     let month = queryDto.month;
     if (year && !month) {
-      throw new BadRequestException(
-        'Month is required when year is provided',
-      );
+      throw new BadRequestException('Month is required when year is provided');
     }
     if (month && !year) {
       year = now.getFullYear();
@@ -760,9 +762,7 @@ export class TransactionsService {
     let year = queryDto.year;
     let month = queryDto.month;
     if (year && !month) {
-      throw new BadRequestException(
-        'Month is required when year is provided',
-      );
+      throw new BadRequestException('Month is required when year is provided');
     }
     if (month && !year) {
       year = now.getFullYear();
@@ -857,6 +857,230 @@ export class TransactionsService {
     };
   }
 
+  /**
+   * Fetches all bill transactions for a user with pagination and optional month filtering.
+   * - If year and month are provided: filters by that specific month
+   * - If only month is provided: uses current year with the specified month
+   * - If neither is provided: returns all bill transactions (no month filter)
+   */
+  async getBills(
+    userId: string,
+    queryDto: GetBillsQueryDto,
+  ): Promise<PaginatedTransactions> {
+    const page = queryDto.page ?? 1;
+    const limit = queryDto.limit ?? 20;
+    const skip = (page - 1) * limit;
+    const now = new Date();
+    let year = queryDto.year;
+    let month = queryDto.month;
+    if (year && !month) {
+      throw new BadRequestException('Month is required when year is provided');
+    }
+    if (month && !year) {
+      year = now.getFullYear();
+    }
+    const whereClause: any = {
+      userId,
+      type: TransactionType.BILL,
+    };
+    if (year && month) {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+      whereClause.date = {
+        gte: startDate,
+        lte: endDate,
+      };
+    }
+    const [transactions, total] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where: whereClause,
+        skip,
+        take: limit,
+        orderBy: {
+          date: 'desc',
+        },
+      }),
+      this.prisma.transaction.count({
+        where: whereClause,
+      }),
+    ]);
+    const totalPages = Math.ceil(total / limit);
+    const mappedTransactions = transactions.map((transaction) =>
+      this.mapToTransactionType(transaction),
+    );
+    return {
+      data: mappedTransactions,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    };
+  }
+
+  /**
+   * Fetches bill transactions for the current month with pagination.
+   */
+  async getCurrentMonthBills(
+    userId: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<PaginatedTransactions> {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+    const skip = (page - 1) * limit;
+    const whereClause = {
+      userId,
+      type: TransactionType.BILL,
+      date: {
+        gte: startDate,
+        lte: endDate,
+      },
+    };
+    const [transactions, total] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where: whereClause,
+        skip,
+        take: limit,
+        orderBy: {
+          date: 'desc',
+        },
+      }),
+      this.prisma.transaction.count({
+        where: whereClause,
+      }),
+    ]);
+    const totalPages = Math.ceil(total / limit);
+    const mappedTransactions = transactions.map((transaction) =>
+      this.mapToTransactionType(transaction),
+    );
+    return {
+      data: mappedTransactions,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    };
+  }
+
+  /**
+   * Fetches all subscription transactions for a user with pagination and optional month filtering.
+   * - If year and month are provided: filters by that specific month
+   * - If only month is provided: uses current year with the specified month
+   * - If neither is provided: returns all subscription transactions (no month filter)
+   */
+  async getSubscriptions(
+    userId: string,
+    queryDto: GetSubscriptionsQueryDto,
+  ): Promise<PaginatedTransactions> {
+    const page = queryDto.page ?? 1;
+    const limit = queryDto.limit ?? 20;
+    const skip = (page - 1) * limit;
+    const now = new Date();
+    let year = queryDto.year;
+    let month = queryDto.month;
+    if (year && !month) {
+      throw new BadRequestException('Month is required when year is provided');
+    }
+    if (month && !year) {
+      year = now.getFullYear();
+    }
+    const whereClause: any = {
+      userId,
+      type: TransactionType.SUBSCRIPTION,
+    };
+    if (year && month) {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+      whereClause.date = {
+        gte: startDate,
+        lte: endDate,
+      };
+    }
+    const [transactions, total] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where: whereClause,
+        skip,
+        take: limit,
+        orderBy: {
+          date: 'desc',
+        },
+      }),
+      this.prisma.transaction.count({
+        where: whereClause,
+      }),
+    ]);
+    const totalPages = Math.ceil(total / limit);
+    const mappedTransactions = transactions.map((transaction) =>
+      this.mapToTransactionType(transaction),
+    );
+    return {
+      data: mappedTransactions,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    };
+  }
+
+  /**
+   * Fetches subscription transactions for the current month with pagination.
+   */
+  async getCurrentMonthSubscriptions(
+    userId: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<PaginatedTransactions> {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+    const skip = (page - 1) * limit;
+    const whereClause = {
+      userId,
+      type: TransactionType.SUBSCRIPTION,
+      date: {
+        gte: startDate,
+        lte: endDate,
+      },
+    };
+    const [transactions, total] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where: whereClause,
+        skip,
+        take: limit,
+        orderBy: {
+          date: 'desc',
+        },
+      }),
+      this.prisma.transaction.count({
+        where: whereClause,
+      }),
+    ]);
+    const totalPages = Math.ceil(total / limit);
+    const mappedTransactions = transactions.map((transaction) =>
+      this.mapToTransactionType(transaction),
+    );
+    return {
+      data: mappedTransactions,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    };
+  }
+
   private isDateInMonth(date: Date, year: number, month: number): boolean {
     return date.getFullYear() === year && date.getMonth() === month - 1;
   }
@@ -897,4 +1121,3 @@ export class TransactionsService {
     };
   }
 }
-

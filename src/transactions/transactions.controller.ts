@@ -31,6 +31,8 @@ import { MonthlyBalance } from './models/monthly-balance.type';
 import { PaginatedTransactions } from './models/paginated-transactions.type';
 import { GetExpensesRefundsQueryDto } from './models/get-expenses-refunds-query.dto';
 import { GetIncomeQueryDto } from './models/get-income-query.dto';
+import { GetBillsQueryDto } from './models/get-bills-query.dto';
+import { GetSubscriptionsQueryDto } from './models/get-subscriptions-query.dto';
 import { UpdateTransactionDto } from './models/update-transaction.dto';
 import { DeleteTransactionQueryDto } from './models/delete-transaction-query.dto';
 
@@ -238,6 +240,104 @@ export class TransactionsController {
       throw new BadRequestException('Page and limit must be valid numbers');
     }
     return this.transactionsService.getCurrentMonthIncome(
+      req.user.id,
+      pageNumber,
+      limitNumber,
+    );
+  }
+
+  @Get('bills')
+  @ApiOperation({
+    summary: 'Get bill transactions',
+    description:
+      'Fetches all bill transactions for the user with pagination. Can filter by month/year or get all transactions. If only month is provided, uses current year. If neither year nor month is provided, returns all transactions.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Bill transactions successfully retrieved',
+    type: PaginatedTransactions,
+  })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getBills(
+    @Request() req: { user: { id: string; email: string } },
+    @Query() queryDto: GetBillsQueryDto,
+  ): Promise<PaginatedTransactions> {
+    return this.transactionsService.getBills(req.user.id, queryDto);
+  }
+
+  @Get('bills/current-month')
+  @ApiOperation({
+    summary: 'Get current month bill transactions',
+    description:
+      'Fetches bill transactions for the current month with pagination.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Current month bill transactions successfully retrieved',
+    type: PaginatedTransactions,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getCurrentMonthBills(
+    @Request() req: { user: { id: string; email: string } },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ): Promise<PaginatedTransactions> {
+    const pageNumber = page ? parseInt(page, 10) : 1;
+    const limitNumber = limit ? parseInt(limit, 10) : 20;
+    if (isNaN(pageNumber) || isNaN(limitNumber)) {
+      throw new BadRequestException('Page and limit must be valid numbers');
+    }
+    return this.transactionsService.getCurrentMonthBills(
+      req.user.id,
+      pageNumber,
+      limitNumber,
+    );
+  }
+
+  @Get('subscriptions')
+  @ApiOperation({
+    summary: 'Get subscription transactions',
+    description:
+      'Fetches all subscription transactions for the user with pagination. Can filter by month/year or get all transactions. If only month is provided, uses current year. If neither year nor month is provided, returns all transactions.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Subscription transactions successfully retrieved',
+    type: PaginatedTransactions,
+  })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getSubscriptions(
+    @Request() req: { user: { id: string; email: string } },
+    @Query() queryDto: GetSubscriptionsQueryDto,
+  ): Promise<PaginatedTransactions> {
+    return this.transactionsService.getSubscriptions(req.user.id, queryDto);
+  }
+
+  @Get('subscriptions/current-month')
+  @ApiOperation({
+    summary: 'Get current month subscription transactions',
+    description:
+      'Fetches subscription transactions for the current month with pagination.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Current month subscription transactions successfully retrieved',
+    type: PaginatedTransactions,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getCurrentMonthSubscriptions(
+    @Request() req: { user: { id: string; email: string } },
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ): Promise<PaginatedTransactions> {
+    const pageNumber = page ? parseInt(page, 10) : 1;
+    const limitNumber = limit ? parseInt(limit, 10) : 20;
+    if (isNaN(pageNumber) || isNaN(limitNumber)) {
+      throw new BadRequestException('Page and limit must be valid numbers');
+    }
+    return this.transactionsService.getCurrentMonthSubscriptions(
       req.user.id,
       pageNumber,
       limitNumber,

@@ -54,6 +54,12 @@ describe('TransactionsController', () => {
       createSaving: jest.fn(),
       createExpense: jest.fn(),
       createRefund: jest.fn(),
+      getIncome: jest.fn(),
+      getCurrentMonthIncome: jest.fn(),
+      getBills: jest.fn(),
+      getCurrentMonthBills: jest.fn(),
+      getSubscriptions: jest.fn(),
+      getCurrentMonthSubscriptions: jest.fn(),
       updateTransaction: jest.fn(),
       removeTransaction: jest.fn(),
     };
@@ -380,6 +386,163 @@ describe('TransactionsController', () => {
         mockTransactionId,
         queryDto,
       );
+    });
+  });
+
+  describe('getIncome', () => {
+    it('should get income transactions', async () => {
+      const queryDto = { page: 1, limit: 20 };
+      const expectedResult = {
+        data: [mockTransaction],
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      };
+      transactionsService.getIncome.mockResolvedValue(expectedResult);
+      const actualResult = await controller.getIncome(
+        mockRequest as any,
+        queryDto,
+      );
+      expect(actualResult).toEqual(expectedResult);
+      expect(transactionsService.getIncome).toHaveBeenCalledWith(
+        mockUserId,
+        queryDto,
+      );
+    });
+  });
+
+  describe('getCurrentMonthIncome', () => {
+    it('should get current month income transactions', async () => {
+      const expectedResult = {
+        data: [mockTransaction],
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      };
+      transactionsService.getCurrentMonthIncome.mockResolvedValue(
+        expectedResult,
+      );
+      const actualResult = await controller.getCurrentMonthIncome(
+        mockRequest as any,
+        '1',
+        '20',
+      );
+      expect(actualResult).toEqual(expectedResult);
+      expect(transactionsService.getCurrentMonthIncome).toHaveBeenCalledWith(
+        mockUserId,
+        1,
+        20,
+      );
+    });
+  });
+
+  describe('getBills', () => {
+    it('should get bill transactions', async () => {
+      const queryDto = { page: 1, limit: 20 };
+      const expectedResult = {
+        data: [mockTransaction],
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      };
+      transactionsService.getBills.mockResolvedValue(expectedResult);
+      const actualResult = await controller.getBills(
+        mockRequest as any,
+        queryDto,
+      );
+      expect(actualResult).toEqual(expectedResult);
+      expect(transactionsService.getBills).toHaveBeenCalledWith(
+        mockUserId,
+        queryDto,
+      );
+    });
+  });
+
+  describe('getCurrentMonthBills', () => {
+    it('should get current month bill transactions', async () => {
+      const expectedResult = {
+        data: [mockTransaction],
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      };
+      transactionsService.getCurrentMonthBills.mockResolvedValue(
+        expectedResult,
+      );
+      const actualResult = await controller.getCurrentMonthBills(
+        mockRequest as any,
+        '1',
+        '20',
+      );
+      expect(actualResult).toEqual(expectedResult);
+      expect(transactionsService.getCurrentMonthBills).toHaveBeenCalledWith(
+        mockUserId,
+        1,
+        20,
+      );
+    });
+  });
+
+  describe('getSubscriptions', () => {
+    it('should get subscription transactions', async () => {
+      const queryDto = { page: 1, limit: 20 };
+      const expectedResult = {
+        data: [mockTransaction],
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      };
+      transactionsService.getSubscriptions.mockResolvedValue(expectedResult);
+      const actualResult = await controller.getSubscriptions(
+        mockRequest as any,
+        queryDto,
+      );
+      expect(actualResult).toEqual(expectedResult);
+      expect(transactionsService.getSubscriptions).toHaveBeenCalledWith(
+        mockUserId,
+        queryDto,
+      );
+    });
+  });
+
+  describe('getCurrentMonthSubscriptions', () => {
+    it('should get current month subscription transactions', async () => {
+      const expectedResult = {
+        data: [mockTransaction],
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      };
+      transactionsService.getCurrentMonthSubscriptions.mockResolvedValue(
+        expectedResult,
+      );
+      const actualResult = await controller.getCurrentMonthSubscriptions(
+        mockRequest as any,
+        '1',
+        '20',
+      );
+      expect(actualResult).toEqual(expectedResult);
+      expect(
+        transactionsService.getCurrentMonthSubscriptions,
+      ).toHaveBeenCalledWith(mockUserId, 1, 20);
     });
   });
 

@@ -15,6 +15,10 @@ import { CreateSubscriptionDto } from './models/create-subscription.dto';
 import { CreateSavingDto } from './models/create-saving.dto';
 import { CreateExpenseDto } from './models/create-expense.dto';
 import { CreateRefundDto } from './models/create-refund.dto';
+import { GetIncomeQueryDto } from './models/get-income-query.dto';
+import { GetBillsQueryDto } from './models/get-bills-query.dto';
+import { GetSubscriptionsQueryDto } from './models/get-subscriptions-query.dto';
+import { BadRequestException } from '@nestjs/common';
 
 describe('TransactionsService', () => {
   let service: TransactionsService;
@@ -72,6 +76,7 @@ describe('TransactionsService', () => {
         findUnique: jest.fn(),
         findFirst: jest.fn(),
         findMany: jest.fn(),
+        count: jest.fn(),
         update: jest.fn(),
         updateMany: jest.fn(),
         delete: jest.fn(),
@@ -835,6 +840,351 @@ describe('TransactionsService', () => {
         service.removeTransaction(mockUserId, mockTransactionId),
       ).rejects.toThrow(ForbiddenException);
       expect(prismaService.transaction.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getIncome', () => {
+    it('should get income transactions with pagination', async () => {
+      const queryDto: GetIncomeQueryDto = { page: 1, limit: 20 };
+      const mockTransactions = [
+        {
+          ...mockTransaction,
+          type: TransactionType.INCOME,
+        },
+      ];
+      (prismaService.transaction.findMany as jest.Mock).mockResolvedValue(
+        mockTransactions,
+      );
+      (prismaService.transaction.count as jest.Mock).mockResolvedValue(1);
+
+      const actualResult = await service.getIncome(mockUserId, queryDto);
+
+      expect(actualResult.data).toHaveLength(1);
+      expect(actualResult.page).toBe(1);
+      expect(actualResult.limit).toBe(20);
+      expect(actualResult.total).toBe(1);
+      expect(prismaService.transaction.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: mockUserId,
+          type: TransactionType.INCOME,
+        },
+        skip: 0,
+        take: 20,
+        orderBy: {
+          date: 'desc',
+        },
+      });
+    });
+
+    it('should filter income transactions by month and year', async () => {
+      const queryDto: GetIncomeQueryDto = {
+        page: 1,
+        limit: 20,
+        year: 2024,
+        month: 11,
+      };
+      const mockTransactions = [
+        {
+          ...mockTransaction,
+          type: TransactionType.INCOME,
+        },
+      ];
+      (prismaService.transaction.findMany as jest.Mock).mockResolvedValue(
+        mockTransactions,
+      );
+      (prismaService.transaction.count as jest.Mock).mockResolvedValue(1);
+
+      await service.getIncome(mockUserId, queryDto);
+
+      expect(prismaService.transaction.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: mockUserId,
+          type: TransactionType.INCOME,
+          date: {
+            gte: new Date(2024, 10, 1),
+            lte: new Date(2024, 11, 0, 23, 59, 59, 999),
+          },
+        },
+        skip: 0,
+        take: 20,
+        orderBy: {
+          date: 'desc',
+        },
+      });
+    });
+
+    it('should throw BadRequestException when year is provided without month', async () => {
+      const queryDto: GetIncomeQueryDto = {
+        page: 1,
+        limit: 20,
+        year: 2024,
+      };
+
+      await expect(
+        service.getIncome(mockUserId, queryDto),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('getCurrentMonthIncome', () => {
+    it('should get current month income transactions', async () => {
+      const mockTransactions = [
+        {
+          ...mockTransaction,
+          type: TransactionType.INCOME,
+        },
+      ];
+      (prismaService.transaction.findMany as jest.Mock).mockResolvedValue(
+        mockTransactions,
+      );
+      (prismaService.transaction.count as jest.Mock).mockResolvedValue(1);
+
+      const actualResult = await service.getCurrentMonthIncome(
+        mockUserId,
+        1,
+        20,
+      );
+
+      expect(actualResult.data).toHaveLength(1);
+      expect(actualResult.page).toBe(1);
+      expect(actualResult.limit).toBe(20);
+      expect(prismaService.transaction.findMany).toHaveBeenCalled();
+      const whereClause = (prismaService.transaction.findMany as jest.Mock).mock
+        .calls[0][0].where;
+      expect(whereClause.userId).toBe(mockUserId);
+      expect(whereClause.type).toBe(TransactionType.INCOME);
+      expect(whereClause.date).toBeDefined();
+    });
+  });
+
+  describe('getBills', () => {
+    it('should get bill transactions with pagination', async () => {
+      const queryDto: GetBillsQueryDto = { page: 1, limit: 20 };
+      const mockTransactions = [
+        {
+          ...mockTransaction,
+          type: TransactionType.BILL,
+        },
+      ];
+      (prismaService.transaction.findMany as jest.Mock).mockResolvedValue(
+        mockTransactions,
+      );
+      (prismaService.transaction.count as jest.Mock).mockResolvedValue(1);
+
+      const actualResult = await service.getBills(mockUserId, queryDto);
+
+      expect(actualResult.data).toHaveLength(1);
+      expect(actualResult.page).toBe(1);
+      expect(actualResult.limit).toBe(20);
+      expect(actualResult.total).toBe(1);
+      expect(prismaService.transaction.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: mockUserId,
+          type: TransactionType.BILL,
+        },
+        skip: 0,
+        take: 20,
+        orderBy: {
+          date: 'desc',
+        },
+      });
+    });
+
+    it('should filter bill transactions by month and year', async () => {
+      const queryDto: GetBillsQueryDto = {
+        page: 1,
+        limit: 20,
+        year: 2024,
+        month: 11,
+      };
+      const mockTransactions = [
+        {
+          ...mockTransaction,
+          type: TransactionType.BILL,
+        },
+      ];
+      (prismaService.transaction.findMany as jest.Mock).mockResolvedValue(
+        mockTransactions,
+      );
+      (prismaService.transaction.count as jest.Mock).mockResolvedValue(1);
+
+      await service.getBills(mockUserId, queryDto);
+
+      expect(prismaService.transaction.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: mockUserId,
+          type: TransactionType.BILL,
+          date: {
+            gte: new Date(2024, 10, 1),
+            lte: new Date(2024, 11, 0, 23, 59, 59, 999),
+          },
+        },
+        skip: 0,
+        take: 20,
+        orderBy: {
+          date: 'desc',
+        },
+      });
+    });
+
+    it('should throw BadRequestException when year is provided without month', async () => {
+      const queryDto: GetBillsQueryDto = {
+        page: 1,
+        limit: 20,
+        year: 2024,
+      };
+
+      await expect(
+        service.getBills(mockUserId, queryDto),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('getCurrentMonthBills', () => {
+    it('should get current month bill transactions', async () => {
+      const mockTransactions = [
+        {
+          ...mockTransaction,
+          type: TransactionType.BILL,
+        },
+      ];
+      (prismaService.transaction.findMany as jest.Mock).mockResolvedValue(
+        mockTransactions,
+      );
+      (prismaService.transaction.count as jest.Mock).mockResolvedValue(1);
+
+      const actualResult = await service.getCurrentMonthBills(
+        mockUserId,
+        1,
+        20,
+      );
+
+      expect(actualResult.data).toHaveLength(1);
+      expect(actualResult.page).toBe(1);
+      expect(actualResult.limit).toBe(20);
+      expect(prismaService.transaction.findMany).toHaveBeenCalled();
+      const whereClause = (prismaService.transaction.findMany as jest.Mock).mock
+        .calls[0][0].where;
+      expect(whereClause.userId).toBe(mockUserId);
+      expect(whereClause.type).toBe(TransactionType.BILL);
+      expect(whereClause.date).toBeDefined();
+    });
+  });
+
+  describe('getSubscriptions', () => {
+    it('should get subscription transactions with pagination', async () => {
+      const queryDto: GetSubscriptionsQueryDto = { page: 1, limit: 20 };
+      const mockTransactions = [
+        {
+          ...mockTransaction,
+          type: TransactionType.SUBSCRIPTION,
+        },
+      ];
+      (prismaService.transaction.findMany as jest.Mock).mockResolvedValue(
+        mockTransactions,
+      );
+      (prismaService.transaction.count as jest.Mock).mockResolvedValue(1);
+
+      const actualResult = await service.getSubscriptions(
+        mockUserId,
+        queryDto,
+      );
+
+      expect(actualResult.data).toHaveLength(1);
+      expect(actualResult.page).toBe(1);
+      expect(actualResult.limit).toBe(20);
+      expect(actualResult.total).toBe(1);
+      expect(prismaService.transaction.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: mockUserId,
+          type: TransactionType.SUBSCRIPTION,
+        },
+        skip: 0,
+        take: 20,
+        orderBy: {
+          date: 'desc',
+        },
+      });
+    });
+
+    it('should filter subscription transactions by month and year', async () => {
+      const queryDto: GetSubscriptionsQueryDto = {
+        page: 1,
+        limit: 20,
+        year: 2024,
+        month: 11,
+      };
+      const mockTransactions = [
+        {
+          ...mockTransaction,
+          type: TransactionType.SUBSCRIPTION,
+        },
+      ];
+      (prismaService.transaction.findMany as jest.Mock).mockResolvedValue(
+        mockTransactions,
+      );
+      (prismaService.transaction.count as jest.Mock).mockResolvedValue(1);
+
+      await service.getSubscriptions(mockUserId, queryDto);
+
+      expect(prismaService.transaction.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: mockUserId,
+          type: TransactionType.SUBSCRIPTION,
+          date: {
+            gte: new Date(2024, 10, 1),
+            lte: new Date(2024, 11, 0, 23, 59, 59, 999),
+          },
+        },
+        skip: 0,
+        take: 20,
+        orderBy: {
+          date: 'desc',
+        },
+      });
+    });
+
+    it('should throw BadRequestException when year is provided without month', async () => {
+      const queryDto: GetSubscriptionsQueryDto = {
+        page: 1,
+        limit: 20,
+        year: 2024,
+      };
+
+      await expect(
+        service.getSubscriptions(mockUserId, queryDto),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('getCurrentMonthSubscriptions', () => {
+    it('should get current month subscription transactions', async () => {
+      const mockTransactions = [
+        {
+          ...mockTransaction,
+          type: TransactionType.SUBSCRIPTION,
+        },
+      ];
+      (prismaService.transaction.findMany as jest.Mock).mockResolvedValue(
+        mockTransactions,
+      );
+      (prismaService.transaction.count as jest.Mock).mockResolvedValue(1);
+
+      const actualResult = await service.getCurrentMonthSubscriptions(
+        mockUserId,
+        1,
+        20,
+      );
+
+      expect(actualResult.data).toHaveLength(1);
+      expect(actualResult.page).toBe(1);
+      expect(actualResult.limit).toBe(20);
+      expect(prismaService.transaction.findMany).toHaveBeenCalled();
+      const whereClause = (prismaService.transaction.findMany as jest.Mock).mock
+        .calls[0][0].where;
+      expect(whereClause.userId).toBe(mockUserId);
+      expect(whereClause.type).toBe(TransactionType.SUBSCRIPTION);
+      expect(whereClause.date).toBeDefined();
     });
   });
 });
