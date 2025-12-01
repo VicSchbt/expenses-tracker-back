@@ -82,12 +82,13 @@ model Transaction {
   goal   SavingsGoal? @relation(fields: [goalId], references: [id])
   goalId String?
 
-  recurrence Recurrence?
-  isPaid     Boolean?    @default(false)
-  dueDate    DateTime?
+  recurrence        Recurrence?
+  isPaid            Boolean?    @default(false)
+  isAuto            Boolean?    @default(false)
+  dueDate           DateTime?
   recurrenceEndDate DateTime?
 
-  parentTransaction   Transaction? @relation("RecurringTransactions", fields: [parentTransactionId], references: [id], onDelete: Cascade)
+  parentTransaction   Transaction?  @relation("RecurringTransactions", fields: [parentTransactionId], references: [id], onDelete: Cascade)
   parentTransactionId String?
   childTransactions   Transaction[] @relation("RecurringTransactions")
 

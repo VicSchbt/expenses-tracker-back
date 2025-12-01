@@ -51,5 +51,13 @@ export class CreateIncomeDto {
   @IsBoolean()
   @IsOptional()
   isPaid?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Whether the recurring income is automatically paid. If true, isPaid will be set to true automatically.',
+    example: true,
+  })
+  @IsBoolean()
+  @IsOptional()
+  isAuto?: boolean;
 }
 

@@ -81,6 +81,13 @@ export class Transaction {
   })
   isPaid: boolean | null;
 
+  @ApiPropertyOptional({
+    description: 'Whether the recurring transaction is automatically paid',
+    example: false,
+    nullable: true,
+  })
+  isAuto: boolean | null;
+
   @ApiProperty({
     description: 'Creation timestamp',
     example: '2024-01-15T00:00:00.000Z',

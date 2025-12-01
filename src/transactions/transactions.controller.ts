@@ -35,6 +35,7 @@ import { GetBillsQueryDto } from './models/get-bills-query.dto';
 import { GetSubscriptionsQueryDto } from './models/get-subscriptions-query.dto';
 import { UpdateTransactionDto } from './models/update-transaction.dto';
 import { DeleteTransactionQueryDto } from './models/delete-transaction-query.dto';
+import { UpdateIsAutoDto } from './models/update-is-auto.dto';
 
 @ApiTags('transactions')
 @Controller('transactions')
@@ -397,6 +398,33 @@ export class TransactionsController {
       req.user.id,
       id,
       updateTransactionDto,
+    );
+  }
+
+  @Patch(':id/is-auto')
+  @ApiOperation({
+    summary: 'Update isAuto field of a recurring transaction',
+    description:
+      'Updates the isAuto field of a recurring transaction. When isAuto is true, isPaid will be automatically set to true. When isAuto is false, isPaid will be automatically set to false.',
+  })
+  @ApiParam({ name: 'id', description: 'Transaction ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Transaction isAuto field successfully updated',
+    type: Transaction,
+  })
+  @ApiResponse({ status: 404, description: 'Transaction not found' })
+  @ApiResponse({ status: 400, description: 'Transaction does not have recurrence' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async updateIsAuto(
+    @Request() req: { user: { id: string; email: string } },
+    @Param('id') id: string,
+    @Body() updateIsAutoDto: UpdateIsAutoDto,
+  ): Promise<Transaction> {
+    return this.transactionsService.updateIsAuto(
+      req.user.id,
+      id,
+      updateIsAutoDto.isAuto,
     );
   }
 

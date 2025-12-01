@@ -51,5 +51,13 @@ export class CreateBillDto {
   @IsBoolean()
   @IsOptional()
   isPaid?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Whether the recurring bill is automatically paid. If true, isPaid will be set to true automatically.',
+    example: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  isAuto?: boolean;
 }
 

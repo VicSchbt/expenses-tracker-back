@@ -36,6 +36,13 @@ export class TransactionsService {
     const recurrenceEndDate = createIncomeDto.recurrenceEndDate
       ? new Date(createIncomeDto.recurrenceEndDate)
       : null;
+    const isAuto = createIncomeDto.isAuto ?? false;
+    const isPaid =
+      createIncomeDto.isPaid !== undefined
+        ? createIncomeDto.isPaid
+        : isAuto
+          ? true
+          : false;
     const parentTransaction = await this.prisma.transaction.create({
       data: {
         userId,
@@ -45,7 +52,8 @@ export class TransactionsService {
         type: TransactionType.INCOME,
         recurrence: createIncomeDto.recurrence,
         recurrenceEndDate,
-        isPaid: createIncomeDto.isPaid ?? true,
+        isPaid,
+        isAuto,
       },
     });
     if (createIncomeDto.recurrence) {
@@ -66,7 +74,8 @@ export class TransactionsService {
             recurrence: createIncomeDto.recurrence,
             recurrenceEndDate,
             parentTransactionId: parentTransaction.id,
-            isPaid: createIncomeDto.isPaid ?? true,
+            isPaid,
+            isAuto,
           })),
         });
       }
@@ -82,6 +91,13 @@ export class TransactionsService {
     const recurrenceEndDate = createBillDto.recurrenceEndDate
       ? new Date(createBillDto.recurrenceEndDate)
       : null;
+    const isAuto = createBillDto.isAuto ?? false;
+    const isPaid =
+      createBillDto.isPaid !== undefined
+        ? createBillDto.isPaid
+        : isAuto
+          ? true
+          : false;
     const parentTransaction = await this.prisma.transaction.create({
       data: {
         userId,
@@ -91,7 +107,8 @@ export class TransactionsService {
         type: TransactionType.BILL,
         recurrence: createBillDto.recurrence,
         recurrenceEndDate,
-        isPaid: createBillDto.isPaid ?? true,
+        isPaid,
+        isAuto,
       },
     });
     if (createBillDto.recurrence) {
@@ -112,7 +129,8 @@ export class TransactionsService {
             recurrence: createBillDto.recurrence,
             recurrenceEndDate,
             parentTransactionId: parentTransaction.id,
-            isPaid: createBillDto.isPaid ?? true,
+            isPaid,
+            isAuto,
           })),
         });
       }
@@ -128,6 +146,13 @@ export class TransactionsService {
     const recurrenceEndDate = createSubscriptionDto.recurrenceEndDate
       ? new Date(createSubscriptionDto.recurrenceEndDate)
       : null;
+    const isAuto = createSubscriptionDto.isAuto ?? false;
+    const isPaid =
+      createSubscriptionDto.isPaid !== undefined
+        ? createSubscriptionDto.isPaid
+        : isAuto
+          ? true
+          : false;
     const parentTransaction = await this.prisma.transaction.create({
       data: {
         userId,
@@ -137,7 +162,8 @@ export class TransactionsService {
         type: TransactionType.SUBSCRIPTION,
         recurrence: createSubscriptionDto.recurrence,
         recurrenceEndDate,
-        isPaid: createSubscriptionDto.isPaid ?? true,
+        isPaid,
+        isAuto,
       },
     });
     if (createSubscriptionDto.recurrence) {
@@ -158,7 +184,8 @@ export class TransactionsService {
             recurrence: createSubscriptionDto.recurrence,
             recurrenceEndDate,
             parentTransactionId: parentTransaction.id,
-            isPaid: createSubscriptionDto.isPaid ?? true,
+            isPaid,
+            isAuto,
           })),
         });
       }
@@ -408,6 +435,59 @@ export class TransactionsService {
       data,
     });
     return this.mapToTransactionType(updatedTransaction);
+  }
+
+  async updateIsAuto(
+    userId: string,
+    id: string,
+    isAuto: boolean,
+  ): Promise<Transaction> {
+    const existingTransaction = await this.prisma.transaction.findUnique({
+      where: { id },
+      include: {
+        childTransactions: true,
+      },
+    });
+    if (!existingTransaction) {
+      throw new NotFoundException('Transaction not found');
+    }
+    if (existingTransaction.userId !== userId) {
+      throw new ForbiddenException(
+        'You do not have access to this transaction',
+      );
+    }
+    if (!existingTransaction.recurrence) {
+      throw new BadRequestException(
+        'Transaction does not have recurrence. isAuto can only be set for recurring transactions.',
+      );
+    }
+    const isPaid = isAuto ? true : false;
+    const isRecurringParent =
+      existingTransaction.recurrence !== null &&
+      !existingTransaction.parentTransactionId;
+    if (isRecurringParent) {
+      await this.prisma.transaction.updateMany({
+        where: {
+          OR: [{ id }, { parentTransactionId: id }],
+        },
+        data: {
+          isAuto,
+          isPaid,
+        },
+      });
+    } else {
+      await this.prisma.transaction.update({
+        where: { id },
+        data: {
+          isAuto,
+          isPaid,
+        },
+      });
+    }
+    const updatedTransaction = await this.prisma.transaction.findUnique({
+      where: { id },
+    });
+    return this.mapToTransactionType(updatedTransaction!);
   }
 
   async removeTransaction(
@@ -1083,6 +1163,7 @@ export class TransactionsService {
     recurrenceEndDate: Date | null;
     parentTransactionId: string | null;
     isPaid: boolean | null;
+    isAuto?: boolean | null;
     dueDate: Date | null;
     createdAt: Date;
     updatedAt: Date;
@@ -1100,6 +1181,7 @@ export class TransactionsService {
       recurrenceEndDate: transaction.recurrenceEndDate,
       parentTransactionId: transaction.parentTransactionId,
       isPaid: transaction.isPaid,
+      isAuto: transaction.isAuto ?? null,
       createdAt: transaction.createdAt,
       updatedAt: transaction.updatedAt,
     };
