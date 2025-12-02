@@ -63,7 +63,7 @@ describe('TransactionsService', () => {
     recurrenceEndDate: null,
     parentTransactionId: null,
     isPaid: null,
-    dueDate: null,
+    isAuto: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -126,6 +126,8 @@ describe('TransactionsService', () => {
         recurrence: inputCreateIncomeDto.recurrence,
         recurrenceEndDate: null,
         parentTransactionId: null,
+        isPaid: false,
+        isAuto: false,
       };
       (prismaService.transaction.create as jest.Mock).mockResolvedValue(
         expectedTransaction,
@@ -151,8 +153,8 @@ describe('TransactionsService', () => {
         recurrence: inputCreateIncomeDto.recurrence,
         recurrenceEndDate: null,
         parentTransactionId: null,
-        isPaid: null,
-        dueDate: null,
+        isPaid: false,
+        isAuto: false,
         createdAt: expectedTransaction.createdAt,
         updatedAt: expectedTransaction.updatedAt,
       });
@@ -165,6 +167,8 @@ describe('TransactionsService', () => {
           type: TransactionType.INCOME,
           recurrence: inputCreateIncomeDto.recurrence,
           recurrenceEndDate: null,
+          isPaid: false,
+          isAuto: false,
         },
       });
       expect(prismaService.transaction.createMany).toHaveBeenCalled();
@@ -203,6 +207,8 @@ describe('TransactionsService', () => {
           type: TransactionType.INCOME,
           recurrence: undefined,
           recurrenceEndDate: null,
+          isPaid: false,
+          isAuto: false,
         },
       });
       expect(prismaService.transaction.createMany).not.toHaveBeenCalled();
@@ -242,6 +248,8 @@ describe('TransactionsService', () => {
           type: TransactionType.INCOME,
           recurrence: inputDtoWithEndDate.recurrence,
           recurrenceEndDate: new Date(inputDtoWithEndDate.recurrenceEndDate),
+          isPaid: false,
+          isAuto: false,
         },
       });
     });
@@ -282,6 +290,8 @@ describe('TransactionsService', () => {
           type: TransactionType.BILL,
           recurrence: inputCreateBillDto.recurrence,
           recurrenceEndDate: null,
+          isPaid: false,
+          isAuto: false,
         },
       });
       expect(prismaService.transaction.createMany).toHaveBeenCalled();
@@ -323,6 +333,8 @@ describe('TransactionsService', () => {
           type: TransactionType.SUBSCRIPTION,
           recurrence: inputCreateSubscriptionDto.recurrence,
           recurrenceEndDate: null,
+          isPaid: false,
+          isAuto: false,
         },
       });
       expect(prismaService.transaction.createMany).toHaveBeenCalled();
@@ -376,6 +388,7 @@ describe('TransactionsService', () => {
           value: inputCreateSavingDto.value,
           type: TransactionType.SAVINGS,
           goalId: mockGoalId,
+          isPaid: true,
         },
       });
       expect(prismaService.savingsGoal.update).toHaveBeenCalledWith({
@@ -458,6 +471,7 @@ describe('TransactionsService', () => {
           value: inputCreateExpenseDto.value,
           type: TransactionType.EXPENSE,
           categoryId: mockCategoryId,
+          isPaid: true,
         },
       });
     });
@@ -495,6 +509,7 @@ describe('TransactionsService', () => {
           value: inputDtoWithoutCategory.value,
           type: TransactionType.EXPENSE,
           categoryId: undefined,
+          isPaid: true,
         },
       });
     });
@@ -565,6 +580,7 @@ describe('TransactionsService', () => {
           value: inputCreateRefundDto.value,
           type: TransactionType.REFUND,
           categoryId: mockCategoryId,
+          isPaid: true,
         },
       });
     });
