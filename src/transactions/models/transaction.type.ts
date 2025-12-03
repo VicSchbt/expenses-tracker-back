@@ -61,6 +61,13 @@ export class Transaction {
   recurrence: Recurrence | null;
 
   @ApiPropertyOptional({
+    description: 'Maximum number of occurrences in the recurring series (including the first one)',
+    example: 12,
+    nullable: true,
+  })
+  recurrenceCount: number | null;
+
+  @ApiPropertyOptional({
     description: 'End date for recurrence',
     example: '2024-12-31T00:00:00.000Z',
     nullable: true,

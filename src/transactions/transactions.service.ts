@@ -1252,24 +1252,7 @@ export class TransactionsService {
     return date.getFullYear() === year && date.getMonth() === month - 1;
   }
 
-  private mapToTransactionType(transaction: {
-    id: string;
-    userId: string;
-    label: string;
-    date: Date;
-    value: any;
-    type: TransactionType;
-    categoryId: string | null;
-    goalId: string | null;
-    recurrence: any;
-    recurrenceEndDate: Date | null;
-    parentTransactionId: string | null;
-    isPaid: boolean | null;
-    isAuto?: boolean | null;
-    dueDate: Date | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }): Transaction {
+  private mapToTransactionType(transaction: any): Transaction {
     return {
       id: transaction.id,
       userId: transaction.userId,
@@ -1281,6 +1264,7 @@ export class TransactionsService {
       goalId: transaction.goalId,
       recurrence: transaction.recurrence,
       recurrenceEndDate: transaction.recurrenceEndDate,
+      recurrenceCount: transaction.recurrenceCount,
       parentTransactionId: transaction.parentTransactionId,
       isPaid: transaction.isPaid,
       isAuto: transaction.isAuto ?? null,

@@ -36,6 +36,15 @@ export class CreateSavingDto {
   date: string;
 
   @ApiPropertyOptional({
+    description:
+      'Total number of occurrences in the recurring series (including the first one). Cannot be used together with recurrenceEndDate.',
+    example: 12,
+  })
+  @IsNumber()
+  @IsOptional()
+  recurrenceCount?: number;
+
+  @ApiPropertyOptional({
     description: 'Recurrence pattern for the saving contribution',
     enum: Recurrence,
     example: Recurrence.MONTHLY,

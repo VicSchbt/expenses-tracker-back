@@ -83,6 +83,7 @@ model Transaction {
   goalId String?
 
   recurrence        Recurrence?
+  recurrenceCount   Int?
   isPaid            Boolean?    @default(false)
   isAuto            Boolean?    @default(false)
   dueDate           DateTime?

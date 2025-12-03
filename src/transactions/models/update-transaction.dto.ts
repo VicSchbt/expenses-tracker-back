@@ -72,6 +72,15 @@ export class UpdateTransactionDto {
   recurrenceEndDate?: string;
 
   @ApiPropertyOptional({
+    description:
+      'Total number of occurrences in the recurring series (including the first one). Cannot be used together with recurrenceEndDate.',
+    example: 12,
+  })
+  @IsNumber()
+  @IsOptional()
+  recurrenceCount?: number;
+
+  @ApiPropertyOptional({
     description: 'Scope for updating recurring transactions. Only applies if the transaction is part of a recurring series.',
     enum: RecurrenceScope,
     example: RecurrenceScope.CURRENT_ONLY,

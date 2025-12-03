@@ -37,6 +37,15 @@ export class CreateBillDto {
   recurrence?: Recurrence;
 
   @ApiPropertyOptional({
+    description:
+      'Total number of occurrences in the recurring series (including the first one). Cannot be used together with recurrenceEndDate.',
+    example: 12,
+  })
+  @IsNumber()
+  @IsOptional()
+  recurrenceCount?: number;
+
+  @ApiPropertyOptional({
     description: 'End date for recurrence (ISO 8601 format). If not provided, recurrence continues indefinitely.',
     example: '2024-12-31',
   })
