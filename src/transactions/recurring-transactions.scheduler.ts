@@ -95,6 +95,16 @@ export class RecurringTransactionsScheduler {
             })),
           });
           generatedCount += futureDates.length;
+          if (parent.type === 'SAVINGS' && parent.goalId) {
+            await this.prisma.savingsGoal.update({
+              where: { id: parent.goalId },
+              data: {
+                currentAmount: {
+                  increment: Number(parent.value) * futureDates.length,
+                },
+              },
+            });
+          }
         }
       }
       this.logger.log(

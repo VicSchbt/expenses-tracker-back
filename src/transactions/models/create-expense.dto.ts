@@ -1,5 +1,14 @@
-import { IsNotEmpty, IsString, IsDateString, IsNumber, IsOptional, IsBoolean } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsDateString,
+  IsNumber,
+  IsOptional,
+  IsBoolean,
+  IsEnum,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Recurrence } from '@prisma/client';
 
 export class CreateExpenseDto {
   @ApiProperty({
@@ -27,6 +36,24 @@ export class CreateExpenseDto {
   value: number;
 
   @ApiPropertyOptional({
+    description: 'Recurrence pattern for the expense',
+    enum: Recurrence,
+    example: Recurrence.MONTHLY,
+  })
+  @IsEnum(Recurrence)
+  @IsOptional()
+  recurrence?: Recurrence;
+
+  @ApiPropertyOptional({
+    description:
+      'End date for recurrence (ISO 8601 format). If not provided, recurrence continues indefinitely.',
+    example: '2024-12-31',
+  })
+  @IsDateString()
+  @IsOptional()
+  recurrenceEndDate?: string;
+
+  @ApiPropertyOptional({
     description: 'Category ID',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
@@ -41,5 +68,14 @@ export class CreateExpenseDto {
   @IsBoolean()
   @IsOptional()
   isPaid?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Whether the recurring expense is automatically paid. If true, isPaid will be set to true automatically.',
+    example: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  isAuto?: boolean;
 }
 

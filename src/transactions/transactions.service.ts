@@ -209,26 +209,67 @@ export class TransactionsService {
         'You do not have access to this savings goal',
       );
     }
-    const transaction = await this.prisma.transaction.create({
+    const transactionDate = new Date(createSavingDto.date);
+    const recurrenceEndDate = createSavingDto.recurrenceEndDate
+      ? new Date(createSavingDto.recurrenceEndDate)
+      : null;
+    const isAuto = createSavingDto.isAuto ?? false;
+    const isPaid =
+      createSavingDto.isPaid !== undefined
+        ? createSavingDto.isPaid
+        : isAuto
+          ? true
+          : true;
+    const parentTransaction = await this.prisma.transaction.create({
       data: {
         userId,
         label: `Saving to ${goal.name}`,
-        date: new Date(createSavingDto.date),
+        date: transactionDate,
         value: createSavingDto.value,
         type: TransactionType.SAVINGS,
         goalId: createSavingDto.goalId,
-        isPaid: createSavingDto.isPaid ?? true,
+        recurrence: createSavingDto.recurrence,
+        recurrenceEndDate,
+        isPaid,
+        isAuto,
       },
     });
+    let instancesCount = 1;
+    if (createSavingDto.recurrence) {
+      const futureDates = generateFutureOccurrenceDates(
+        transactionDate,
+        createSavingDto.recurrence,
+        recurrenceEndDate,
+        12,
+      );
+      if (futureDates.length > 0) {
+        await this.prisma.transaction.createMany({
+          data: futureDates.map((date) => ({
+            userId,
+            label: `Saving to ${goal.name}`,
+            date,
+            value: createSavingDto.value,
+            type: TransactionType.SAVINGS,
+            goalId: createSavingDto.goalId,
+            recurrence: createSavingDto.recurrence,
+            recurrenceEndDate,
+            parentTransactionId: parentTransaction.id,
+            isPaid,
+            isAuto,
+          })),
+        });
+        instancesCount += futureDates.length;
+      }
+    }
     await this.prisma.savingsGoal.update({
       where: { id: createSavingDto.goalId },
       data: {
         currentAmount: {
-          increment: createSavingDto.value,
+          increment: createSavingDto.value * instancesCount,
         },
       },
     });
-    return this.mapToTransactionType(transaction);
+    return this.mapToTransactionType(parentTransaction);
   }
 
   async createExpense(
@@ -238,18 +279,57 @@ export class TransactionsService {
     if (createExpenseDto.categoryId) {
       await this.validateCategoryOwnership(userId, createExpenseDto.categoryId);
     }
-    const transaction = await this.prisma.transaction.create({
+    const transactionDate = new Date(createExpenseDto.date);
+    const recurrenceEndDate = createExpenseDto.recurrenceEndDate
+      ? new Date(createExpenseDto.recurrenceEndDate)
+      : null;
+    const isAuto = createExpenseDto.isAuto ?? false;
+    const isPaid =
+      createExpenseDto.isPaid !== undefined
+        ? createExpenseDto.isPaid
+        : isAuto
+          ? true
+          : true;
+    const parentTransaction = await this.prisma.transaction.create({
       data: {
         userId,
         label: createExpenseDto.label,
-        date: new Date(createExpenseDto.date),
+        date: transactionDate,
         value: createExpenseDto.value,
         type: TransactionType.EXPENSE,
         categoryId: createExpenseDto.categoryId,
-        isPaid: createExpenseDto.isPaid ?? true,
+        recurrence: createExpenseDto.recurrence,
+        recurrenceEndDate,
+        isPaid,
+        isAuto,
       },
     });
-    return this.mapToTransactionType(transaction);
+    if (createExpenseDto.recurrence) {
+      const futureDates = generateFutureOccurrenceDates(
+        transactionDate,
+        createExpenseDto.recurrence,
+        recurrenceEndDate,
+        12,
+      );
+      if (futureDates.length > 0) {
+        await this.prisma.transaction.createMany({
+          data: futureDates.map((date) => ({
+            userId,
+            label: createExpenseDto.label,
+            date,
+            value: createExpenseDto.value,
+            type: TransactionType.EXPENSE,
+            categoryId: createExpenseDto.categoryId,
+            recurrence: createExpenseDto.recurrence,
+            recurrenceEndDate,
+            parentTransactionId: parentTransaction.id,
+            isPaid,
+            isAuto,
+          })),
+        });
+      }
+    }
+    return this.mapToTransactionType(parentTransaction);
   }
 
   async createRefund(
