@@ -15,6 +15,7 @@ import { CreateRefundDto } from './models/create-refund.dto';
 import { Transaction } from './models/transaction.type';
 import { MonthlyBalance } from './models/monthly-balance.type';
 import { PaginatedTransactions } from './models/paginated-transactions.type';
+import { MonthYear } from './models/month-year.type';
 import { GetExpensesRefundsQueryDto } from './models/get-expenses-refunds-query.dto';
 import { GetIncomeQueryDto } from './models/get-income-query.dto';
 import { GetBillsQueryDto } from './models/get-bills-query.dto';
@@ -1144,6 +1145,27 @@ export class TransactionsService {
       hasNextPage: page < totalPages,
       hasPreviousPage: page > 1,
     };
+  }
+
+  /**
+   * Gets a list of distinct months (year + month) in which the user has any transaction.
+   * Returns the months sorted by date descending (newest first).
+   */
+  async getAvailableMonths(userId: string): Promise<MonthYear[]> {
+    const results = await this.prisma.$queryRaw<
+      Array<{ year: number | bigint; month: number | bigint }>
+    >`
+      SELECT DISTINCT
+        EXTRACT(YEAR FROM date)::INTEGER as year,
+        EXTRACT(MONTH FROM date)::INTEGER as month
+      FROM "Transaction"
+      WHERE "userId" = ${userId}
+      ORDER BY year DESC, month DESC
+    `;
+    return results.map((row) => ({
+      year: Number(row.year),
+      month: Number(row.month),
+    }));
   }
 
   private isDateInMonth(date: Date, year: number, month: number): boolean {

@@ -29,6 +29,7 @@ import { CreateRefundDto } from './models/create-refund.dto';
 import { Transaction } from './models/transaction.type';
 import { MonthlyBalance } from './models/monthly-balance.type';
 import { PaginatedTransactions } from './models/paginated-transactions.type';
+import { MonthYear } from './models/month-year.type';
 import { GetExpensesRefundsQueryDto } from './models/get-expenses-refunds-query.dto';
 import { GetIncomeQueryDto } from './models/get-income-query.dto';
 import { GetBillsQueryDto } from './models/get-bills-query.dto';
@@ -343,6 +344,24 @@ export class TransactionsController {
       pageNumber,
       limitNumber,
     );
+  }
+
+  @Get('available-months')
+  @ApiOperation({
+    summary: 'Get available months',
+    description:
+      'Returns a list of distinct months (year + month) in which the user has any transaction. Sorted by date descending (newest first). Useful for displaying month tabs in the frontend.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Available months successfully retrieved',
+    type: [MonthYear],
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getAvailableMonths(
+    @Request() req: { user: { id: string; email: string } },
+  ): Promise<MonthYear[]> {
+    return this.transactionsService.getAvailableMonths(req.user.id);
   }
 
   @Get('balance/monthly')
