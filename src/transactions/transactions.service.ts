@@ -55,17 +55,21 @@ export class TransactionsService {
         value: createIncomeDto.value,
         type: TransactionType.INCOME,
         recurrence: createIncomeDto.recurrence,
+        recurrenceCount: createIncomeDto.recurrenceCount ?? null,
         recurrenceEndDate,
         isPaid,
         isAuto,
-      },
+      } as any,
     });
     if (createIncomeDto.recurrence) {
+      const maxOccurrences = createIncomeDto.recurrenceCount
+        ? createIncomeDto.recurrenceCount - 1
+        : 12;
       const futureDates = generateFutureOccurrenceDates(
         transactionDate,
         createIncomeDto.recurrence,
         recurrenceEndDate,
-        12,
+        maxOccurrences,
       );
       if (futureDates.length > 0) {
         await this.prisma.transaction.createMany({
@@ -110,17 +114,21 @@ export class TransactionsService {
         value: createBillDto.value,
         type: TransactionType.BILL,
         recurrence: createBillDto.recurrence,
+        recurrenceCount: createBillDto.recurrenceCount ?? null,
         recurrenceEndDate,
         isPaid,
         isAuto,
-      },
+      } as any,
     });
     if (createBillDto.recurrence) {
+      const maxOccurrences = createBillDto.recurrenceCount
+        ? createBillDto.recurrenceCount - 1
+        : 12;
       const futureDates = generateFutureOccurrenceDates(
         transactionDate,
         createBillDto.recurrence,
         recurrenceEndDate,
-        12,
+        maxOccurrences,
       );
       if (futureDates.length > 0) {
         await this.prisma.transaction.createMany({
@@ -165,17 +173,21 @@ export class TransactionsService {
         value: createSubscriptionDto.value,
         type: TransactionType.SUBSCRIPTION,
         recurrence: createSubscriptionDto.recurrence,
+        recurrenceCount: createSubscriptionDto.recurrenceCount ?? null,
         recurrenceEndDate,
         isPaid,
         isAuto,
-      },
+      } as any,
     });
     if (createSubscriptionDto.recurrence) {
+      const maxOccurrences = createSubscriptionDto.recurrenceCount
+        ? createSubscriptionDto.recurrenceCount - 1
+        : 12;
       const futureDates = generateFutureOccurrenceDates(
         transactionDate,
         createSubscriptionDto.recurrence,
         recurrenceEndDate,
-        12,
+        maxOccurrences,
       );
       if (futureDates.length > 0) {
         await this.prisma.transaction.createMany({
@@ -232,18 +244,22 @@ export class TransactionsService {
         type: TransactionType.SAVINGS,
         goalId: createSavingDto.goalId,
         recurrence: createSavingDto.recurrence,
+        recurrenceCount: createSavingDto.recurrenceCount ?? null,
         recurrenceEndDate,
         isPaid,
         isAuto,
-      },
+      } as any,
     });
     let instancesCount = 1;
     if (createSavingDto.recurrence) {
+      const maxOccurrences = createSavingDto.recurrenceCount
+        ? createSavingDto.recurrenceCount - 1
+        : 12;
       const futureDates = generateFutureOccurrenceDates(
         transactionDate,
         createSavingDto.recurrence,
         recurrenceEndDate,
-        12,
+        maxOccurrences,
       );
       if (futureDates.length > 0) {
         await this.prisma.transaction.createMany({
@@ -302,17 +318,21 @@ export class TransactionsService {
         type: TransactionType.EXPENSE,
         categoryId: createExpenseDto.categoryId,
         recurrence: createExpenseDto.recurrence,
+        recurrenceCount: createExpenseDto.recurrenceCount ?? null,
         recurrenceEndDate,
         isPaid,
         isAuto,
-      },
+      } as any,
     });
     if (createExpenseDto.recurrence) {
+      const maxOccurrences = createExpenseDto.recurrenceCount
+        ? createExpenseDto.recurrenceCount - 1
+        : 12;
       const futureDates = generateFutureOccurrenceDates(
         transactionDate,
         createExpenseDto.recurrence,
         recurrenceEndDate,
-        12,
+        maxOccurrences,
       );
       if (futureDates.length > 0) {
         await this.prisma.transaction.createMany({
@@ -1272,8 +1292,12 @@ export class TransactionsService {
     if (!parentTransaction) {
       return null;
     }
-    const hasRecurrenceCount = parentTransaction.recurrenceCount !== null;
-    const hasRecurrenceEndDate = parentTransaction.recurrenceEndDate !== null;
+    const hasRecurrenceCount =
+      parentTransaction.recurrenceCount !== null &&
+      parentTransaction.recurrenceCount !== undefined;
+    const hasRecurrenceEndDate =
+      parentTransaction.recurrenceEndDate !== null &&
+      parentTransaction.recurrenceEndDate !== undefined;
     if (!hasRecurrenceCount && !hasRecurrenceEndDate) {
       return null;
     }
@@ -1289,7 +1313,10 @@ export class TransactionsService {
     const occurrenceNumber = currentIndex + 1;
     let totalOccurrences: number | null = null;
     if (hasRecurrenceCount) {
-      totalOccurrences = parentTransaction.recurrenceCount;
+      totalOccurrences = Number(parentTransaction.recurrenceCount);
+      if (isNaN(totalOccurrences) || totalOccurrences <= 0) {
+        return null;
+      }
     } else if (
       hasRecurrenceEndDate &&
       parentTransaction.recurrence &&
@@ -1304,7 +1331,7 @@ export class TransactionsService {
         recurrence,
       );
     }
-    if (totalOccurrences === null) {
+    if (totalOccurrences === null || totalOccurrences === undefined) {
       return null;
     }
     return `${occurrenceNumber}/${totalOccurrences}`;
@@ -1363,8 +1390,10 @@ export class TransactionsService {
       }
     } else if (
       transaction.recurrence &&
-      (transaction.recurrenceCount !== null ||
-        transaction.recurrenceEndDate !== null)
+      ((transaction.recurrenceCount !== null &&
+        transaction.recurrenceCount !== undefined) ||
+        (transaction.recurrenceEndDate !== null &&
+          transaction.recurrenceEndDate !== undefined))
     ) {
       const allSiblings = await this.prisma.transaction.findMany({
         where: {

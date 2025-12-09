@@ -20,7 +20,9 @@ export class RecurringTransactionsScheduler {
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async generateFutureRecurringTransactions(): Promise<void> {
-    this.logger.log('Starting scheduled task to generate future recurring transactions');
+    this.logger.log(
+      'Starting scheduled task to generate future recurring transactions',
+    );
     try {
       const now = new Date();
       const maxFutureDate = new Date(now);
@@ -71,11 +73,29 @@ export class RecurringTransactionsScheduler {
         if (existingNext) {
           continue;
         }
+        const existingChildrenCount = await this.prisma.transaction.count({
+          where: {
+            parentTransactionId: parent.id,
+          },
+        });
+        const totalTransactions = 1 + existingChildrenCount;
+        let maxOccurrences = 12;
+        if (
+          parent.recurrenceCount !== null &&
+          parent.recurrenceCount !== undefined
+        ) {
+          const remainingOccurrences =
+            parent.recurrenceCount - totalTransactions;
+          if (remainingOccurrences <= 0) {
+            continue;
+          }
+          maxOccurrences = remainingOccurrences;
+        }
         const futureDates = generateFutureOccurrenceDates(
           lastDate,
           parent.recurrence,
           endDate,
-          12,
+          maxOccurrences,
         ).filter((date) => date <= maxFutureDate && date > lastDate);
         if (futureDates.length > 0) {
           await this.prisma.transaction.createMany({
@@ -118,4 +138,3 @@ export class RecurringTransactionsScheduler {
     }
   }
 }
-
