@@ -28,7 +28,7 @@ export class Transaction {
 
   @ApiProperty({
     description: 'Transaction amount',
-    example: 3000.50,
+    example: 3000.5,
   })
   value: number;
 
@@ -61,7 +61,8 @@ export class Transaction {
   recurrence: Recurrence | null;
 
   @ApiPropertyOptional({
-    description: 'Maximum number of occurrences in the recurring series (including the first one)',
+    description:
+      'Maximum number of occurrences in the recurring series (including the first one)',
     example: 12,
     nullable: true,
   })
@@ -80,6 +81,14 @@ export class Transaction {
     nullable: true,
   })
   parentTransactionId: string | null;
+
+  @ApiPropertyOptional({
+    description:
+      'Occurrence number for recurring transaction instances (e.g., "1/12", "2/12"). Only present when the transaction is part of a recurring series with a defined recurrence count or deadline.',
+    example: '1/12',
+    nullable: true,
+  })
+  occurrenceNumber: string | null;
 
   @ApiPropertyOptional({
     description: 'Whether the transaction is paid',
@@ -107,4 +116,3 @@ export class Transaction {
   })
   updatedAt: Date;
 }
-
