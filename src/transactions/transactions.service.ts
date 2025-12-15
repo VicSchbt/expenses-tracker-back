@@ -447,6 +447,8 @@ export class TransactionsService {
         });
       }
     }
+    const recurringData: any = { ...data };
+    delete recurringData.date;
     if (isRecurringParent || isRecurringChild) {
       const parentId = isRecurringParent
         ? id
@@ -483,7 +485,7 @@ export class TransactionsService {
           where: {
             OR: [{ id: parentId }, { parentTransactionId: parentId }],
           },
-          data,
+          data: recurringData,
         });
       } else if (scope === RecurrenceScope.CURRENT_AND_FUTURE) {
         const currentDate = existingTransaction.date;
@@ -530,7 +532,7 @@ export class TransactionsService {
               },
             ],
           },
-          data,
+          data: recurringData,
         });
       }
     }
