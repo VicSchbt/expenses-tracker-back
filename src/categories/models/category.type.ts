@@ -32,5 +32,11 @@ export class Category {
     nullable: true,
   })
   color?: string | null;
-}
 
+  @ApiPropertyOptional({
+    description: 'Budget amount for this category',
+    example: 500.0,
+    nullable: true,
+  })
+  budget?: number | null;
+}

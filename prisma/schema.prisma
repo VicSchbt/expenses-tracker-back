@@ -41,12 +41,13 @@ model User {
 }
 
 model Category {
-  id     String  @id @default(cuid())
-  user   User    @relation(fields: [userId], references: [id])
+  id     String   @id @default(cuid())
+  user   User     @relation(fields: [userId], references: [id])
   userId String
   label  String
   color  String?
   icon   String?
+  budget Decimal?
 
   transactions Transaction[]
 }

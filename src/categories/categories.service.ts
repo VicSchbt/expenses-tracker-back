@@ -22,6 +22,7 @@ export class CategoriesService {
         label: createCategoryDto.label,
         icon: createCategoryDto.icon,
         color: createCategoryDto.color,
+        budget: createCategoryDto.budget,
       },
     });
     return this.mapToCategoryType(category);
@@ -67,6 +68,7 @@ export class CategoriesService {
         label: updateCategoryDto.label,
         icon: updateCategoryDto.icon,
         color: updateCategoryDto.color,
+        budget: updateCategoryDto.budget,
       },
     });
     return this.mapToCategoryType(category);
@@ -93,6 +95,7 @@ export class CategoriesService {
     label: string;
     icon: string | null;
     color: string | null;
+    budget: any;
   }): Category {
     return {
       id: category.id,
@@ -100,6 +103,10 @@ export class CategoriesService {
       label: category.label,
       icon: category.icon,
       color: category.color,
+      budget:
+        category.budget !== null && category.budget !== undefined
+          ? Number(category.budget)
+          : null,
     };
   }
 }

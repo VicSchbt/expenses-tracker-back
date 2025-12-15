@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsNumber } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateCategoryDto {
@@ -25,5 +25,12 @@ export class CreateCategoryDto {
   @IsString()
   @IsOptional()
   color?: string;
-}
 
+  @ApiPropertyOptional({
+    description: 'Budget amount for this category',
+    example: 500.0,
+  })
+  @IsNumber()
+  @IsOptional()
+  budget?: number;
+}
