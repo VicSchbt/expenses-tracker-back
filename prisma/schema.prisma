@@ -35,9 +35,10 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  categories   Category[]
-  goals        SavingsGoal[]
-  transactions Transaction[]
+  categories           Category[]
+  goals                SavingsGoal[]
+  transactions         Transaction[]
+  monthlyBalanceSummaries MonthlyBalanceSummary[]
 }
 
 model Category {
@@ -96,4 +97,25 @@ model Transaction {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model MonthlyBalanceSummary {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  year   Int
+  month  Int
+
+  totalIncome      Decimal @default(0)
+  totalBills       Decimal @default(0)
+  totalSavings     Decimal @default(0)
+  totalSubscriptions Decimal @default(0)
+  totalExpenses    Decimal @default(0)
+  totalRefunds     Decimal @default(0)
+  balance          Decimal @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, year, month])
+  @@index([userId, year, month])
 }

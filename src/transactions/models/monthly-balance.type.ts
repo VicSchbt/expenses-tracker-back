@@ -54,5 +54,11 @@ export class MonthlyBalance {
     example: 2100.0,
   })
   balance: number;
-}
 
+  @ApiProperty({
+    description: 'Balance from the previous month (cumulative)',
+    example: 1500.0,
+    nullable: true,
+  })
+  previousMonthBalance?: number | null;
+}

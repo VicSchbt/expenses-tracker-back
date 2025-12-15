@@ -416,6 +416,39 @@ export class TransactionsController {
     );
   }
 
+  @Get('balance/previous-month')
+  @ApiOperation({
+    summary: 'Get balance for a specified month (defaults to previous month)',
+    description:
+      'Calculates the balance for a specified month. If year and month are not provided, defaults to previous month. Formula: Income + Refunds - Bills - Savings - Subscriptions - Expenses',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Balance successfully calculated',
+    type: MonthlyBalance,
+  })
+  @ApiResponse({ status: 400, description: 'Bad request (invalid month/year)' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getPreviousMonthBalance(
+    @Request() req: { user: { id: string; email: string } },
+    @Query('year') year?: string,
+    @Query('month') month?: string,
+  ): Promise<MonthlyBalance> {
+    if (year && month) {
+      const yearNumber = parseInt(year, 10);
+      const monthNumber = parseInt(month, 10);
+      if (isNaN(yearNumber) || isNaN(monthNumber)) {
+        throw new BadRequestException('Year and month must be valid numbers');
+      }
+      return this.transactionsService.getMonthlyBalance(
+        req.user.id,
+        yearNumber,
+        monthNumber,
+      );
+    }
+    return this.transactionsService.getPreviousMonthBalance(req.user.id);
+  }
+
   @Patch(':id')
   @ApiOperation({
     summary: 'Update a transaction',
