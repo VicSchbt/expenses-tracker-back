@@ -20,6 +20,7 @@ import { GetExpensesRefundsQueryDto } from './models/get-expenses-refunds-query.
 import { GetIncomeQueryDto } from './models/get-income-query.dto';
 import { GetBillsQueryDto } from './models/get-bills-query.dto';
 import { GetSubscriptionsQueryDto } from './models/get-subscriptions-query.dto';
+import { GetSavingsQueryDto } from './models/get-savings-query.dto';
 import { UpdateTransactionDto } from './models/update-transaction.dto';
 import { DeleteTransactionQueryDto } from './models/delete-transaction-query.dto';
 import { RecurrenceScope } from './models/recurrence-scope.enum';
@@ -1224,6 +1225,68 @@ export class TransactionsService {
         lte: endDate,
       },
     };
+    const [transactions, total] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where: whereClause,
+        skip,
+        take: limit,
+        orderBy: {
+          date: 'desc',
+        },
+      }),
+      this.prisma.transaction.count({
+        where: whereClause,
+      }),
+    ]);
+    const totalPages = Math.ceil(total / limit);
+    const mappedTransactions = await Promise.all(
+      transactions.map((transaction) => this.mapToTransactionType(transaction)),
+    );
+    return {
+      data: mappedTransactions,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    };
+  }
+
+  /**
+   * Fetches all savings transactions for a user with pagination and optional month filtering.
+   * - If year and month are provided: filters by that specific month
+   * - If only month is provided: uses current year with the specified month
+   * - If neither is provided: returns all savings transactions (no month filter)
+   */
+  async getSavings(
+    userId: string,
+    queryDto: GetSavingsQueryDto,
+  ): Promise<PaginatedTransactions> {
+    const page = queryDto.page ?? 1;
+    const limit = queryDto.limit ?? 20;
+    const skip = (page - 1) * limit;
+    const now = new Date();
+    let year = queryDto.year;
+    let month = queryDto.month;
+    if (year && !month) {
+      throw new BadRequestException('Month is required when year is provided');
+    }
+    if (month && !year) {
+      year = now.getFullYear();
+    }
+    const whereClause: any = {
+      userId,
+      type: TransactionType.SAVINGS,
+    };
+    if (year && month) {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+      whereClause.date = {
+        gte: startDate,
+        lte: endDate,
+      };
+    }
     const [transactions, total] = await Promise.all([
       this.prisma.transaction.findMany({
         where: whereClause,

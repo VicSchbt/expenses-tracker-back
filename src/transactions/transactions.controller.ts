@@ -34,6 +34,7 @@ import { GetExpensesRefundsQueryDto } from './models/get-expenses-refunds-query.
 import { GetIncomeQueryDto } from './models/get-income-query.dto';
 import { GetBillsQueryDto } from './models/get-bills-query.dto';
 import { GetSubscriptionsQueryDto } from './models/get-subscriptions-query.dto';
+import { GetSavingsQueryDto } from './models/get-savings-query.dto';
 import { UpdateTransactionDto } from './models/update-transaction.dto';
 import { DeleteTransactionQueryDto } from './models/delete-transaction-query.dto';
 import { UpdateIsAutoDto } from './models/update-is-auto.dto';
@@ -325,7 +326,8 @@ export class TransactionsController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Current month subscription transactions successfully retrieved',
+    description:
+      'Current month subscription transactions successfully retrieved',
     type: PaginatedTransactions,
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -344,6 +346,26 @@ export class TransactionsController {
       pageNumber,
       limitNumber,
     );
+  }
+
+  @Get('savings')
+  @ApiOperation({
+    summary: 'Get savings transactions',
+    description:
+      'Fetches all savings transactions for the user with pagination. Can filter by month/year or get all transactions. If only month is provided, uses current year. If neither year nor month is provided, returns all transactions.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Savings transactions successfully retrieved',
+    type: PaginatedTransactions,
+  })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getSavings(
+    @Request() req: { user: { id: string; email: string } },
+    @Query() queryDto: GetSavingsQueryDto,
+  ): Promise<PaginatedTransactions> {
+    return this.transactionsService.getSavings(req.user.id, queryDto);
   }
 
   @Get('available-months')
@@ -433,7 +455,10 @@ export class TransactionsController {
     type: Transaction,
   })
   @ApiResponse({ status: 404, description: 'Transaction not found' })
-  @ApiResponse({ status: 400, description: 'Transaction does not have recurrence' })
+  @ApiResponse({
+    status: 400,
+    description: 'Transaction does not have recurrence',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async updateIsAuto(
     @Request() req: { user: { id: string; email: string } },
