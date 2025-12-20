@@ -20,24 +20,24 @@ import {
 } from '@nestjs/swagger';
 import { TransactionsService } from './transactions.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CreateIncomeDto } from './models/create-income.dto';
-import { CreateBillDto } from './models/create-bill.dto';
-import { CreateSubscriptionDto } from './models/create-subscription.dto';
-import { CreateSavingDto } from './models/create-saving.dto';
-import { CreateExpenseDto } from './models/create-expense.dto';
-import { CreateRefundDto } from './models/create-refund.dto';
-import { Transaction } from './models/transaction.type';
-import { MonthlyBalance } from './models/monthly-balance.type';
-import { PaginatedTransactions } from './models/paginated-transactions.type';
-import { MonthYear } from './models/month-year.type';
-import { GetExpensesRefundsQueryDto } from './models/get-expenses-refunds-query.dto';
-import { GetIncomeQueryDto } from './models/get-income-query.dto';
-import { GetBillsQueryDto } from './models/get-bills-query.dto';
-import { GetSubscriptionsQueryDto } from './models/get-subscriptions-query.dto';
-import { GetSavingsQueryDto } from './models/get-savings-query.dto';
-import { UpdateTransactionDto } from './models/update-transaction.dto';
-import { DeleteTransactionQueryDto } from './models/delete-transaction-query.dto';
-import { UpdateIsAutoDto } from './models/update-is-auto.dto';
+import { CreateIncomeDto } from './models/dtos/create/create-income.dto';
+import { CreateBillDto } from './models/dtos/create/create-bill.dto';
+import { CreateSubscriptionDto } from './models/dtos/create/create-subscription.dto';
+import { CreateSavingDto } from './models/dtos/create/create-saving.dto';
+import { CreateExpenseDto } from './models/dtos/create/create-expense.dto';
+import { CreateRefundDto } from './models/dtos/create/create-refund.dto';
+import { Transaction } from './models/types/transaction.type';
+import { MonthlyBalance } from './models/types/monthly-balance.type';
+import { PaginatedTransactions } from './models/types/paginated-transactions.type';
+import { MonthYear } from './models/types/month-year.type';
+import { GetExpensesRefundsQueryDto } from './models/dtos/query/get-expenses-refunds-query.dto';
+import { GetIncomeQueryDto } from './models/dtos/query/get-income-query.dto';
+import { GetBillsQueryDto } from './models/dtos/query/get-bills-query.dto';
+import { GetSubscriptionsQueryDto } from './models/dtos/query/get-subscriptions-query.dto';
+import { GetSavingsQueryDto } from './models/dtos/query/get-savings-query.dto';
+import { UpdateTransactionDto } from './models/dtos/update/update-transaction.dto';
+import { DeleteTransactionQueryDto } from './models/dtos/query/delete-transaction-query.dto';
+import { UpdateIsAutoDto } from './models/dtos/update/update-is-auto.dto';
 
 @ApiTags('transactions')
 @Controller('transactions')

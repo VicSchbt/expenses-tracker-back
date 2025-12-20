@@ -1,6 +1,6 @@
 import { PrismaService } from 'prisma/prisma.service';
 import { Recurrence } from '@prisma/client';
-import { Transaction } from '../models/transaction.type';
+import { Transaction } from '../models/types/transaction.type';
 import { calculateNextRecurrenceDate } from './recurrence-date.util';
 
 /**

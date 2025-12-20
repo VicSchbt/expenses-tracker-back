@@ -2,14 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { TransactionsController } from './transactions.controller';
 import { TransactionsService } from './transactions.service';
 import { TransactionType, Recurrence } from '@prisma/client';
-import { CreateIncomeDto } from './models/create-income.dto';
-import { CreateBillDto } from './models/create-bill.dto';
-import { CreateSubscriptionDto } from './models/create-subscription.dto';
-import { CreateSavingDto } from './models/create-saving.dto';
-import { CreateExpenseDto } from './models/create-expense.dto';
-import { CreateRefundDto } from './models/create-refund.dto';
-import { Transaction } from './models/transaction.type';
-import { UpdateTransactionDto } from './models/update-transaction.dto';
+import { CreateIncomeDto } from './models/dtos/create/create-income.dto';
+import { CreateBillDto } from './models/dtos/create/create-bill.dto';
+import { CreateSubscriptionDto } from './models/dtos/create/create-subscription.dto';
+import { CreateSavingDto } from './models/dtos/create/create-saving.dto';
+import { CreateExpenseDto } from './models/dtos/create/create-expense.dto';
+import { CreateRefundDto } from './models/dtos/create/create-refund.dto';
+import { Transaction } from './models/types/transaction.type';
+import { UpdateTransactionDto } from './models/dtos/update/update-transaction.dto';
 
 describe('TransactionsController', () => {
   let controller: TransactionsController;
@@ -556,4 +556,3 @@ describe('TransactionsController', () => {
     });
   });
 });
-

@@ -8,7 +8,7 @@ import {
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Recurrence } from '@prisma/client';
-import { RecurrenceScope } from './recurrence-scope.enum';
+import { RecurrenceScope } from '../../enums/recurrence-scope.enum';
 
 /**
  * DTO for updating an existing transaction.
@@ -81,7 +81,8 @@ export class UpdateTransactionDto {
   recurrenceCount?: number;
 
   @ApiPropertyOptional({
-    description: 'Scope for updating recurring transactions. Only applies if the transaction is part of a recurring series.',
+    description:
+      'Scope for updating recurring transactions. Only applies if the transaction is part of a recurring series.',
     enum: RecurrenceScope,
     example: RecurrenceScope.CURRENT_ONLY,
     default: RecurrenceScope.CURRENT_ONLY,
@@ -90,5 +91,3 @@ export class UpdateTransactionDto {
   @IsOptional()
   recurrenceScope?: RecurrenceScope;
 }
-
-

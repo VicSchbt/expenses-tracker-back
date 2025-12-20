@@ -1,6 +1,6 @@
 import { PrismaService } from 'prisma/prisma.service';
 import { TransactionType } from '@prisma/client';
-import { RecurrenceScope } from '../models/recurrence-scope.enum';
+import { RecurrenceScope } from '../models/enums/recurrence-scope.enum';
 import { SavingsGoalIntegrationService } from '../services/savings-goal-integration.service';
 
 /**

@@ -1,9 +1,9 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { TransactionType } from '@prisma/client';
-import { Transaction } from '../models/transaction.type';
-import { UpdateTransactionDto } from '../models/update-transaction.dto';
-import { RecurrenceScope } from '../models/recurrence-scope.enum';
+import { Transaction } from '../models/types/transaction.type';
+import { UpdateTransactionDto } from '../models/dtos/update/update-transaction.dto';
+import { RecurrenceScope } from '../models/enums/recurrence-scope.enum';
 import {
   validateCategoryOwnership,
   validateTransactionOwnership,

@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { TransactionType } from '@prisma/client';
-import { DeleteTransactionQueryDto } from '../models/delete-transaction-query.dto';
-import { RecurrenceScope } from '../models/recurrence-scope.enum';
+import { DeleteTransactionQueryDto } from '../models/dtos/query/delete-transaction-query.dto';
+import { RecurrenceScope } from '../models/enums/recurrence-scope.enum';
 import { validateTransactionOwnership } from '../utils/transaction-validation.util';
 import {
   collectUniqueMonths,

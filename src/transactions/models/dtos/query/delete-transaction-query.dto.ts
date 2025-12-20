@@ -1,6 +1,6 @@
 import { IsOptional, IsEnum } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { RecurrenceScope } from './recurrence-scope.enum';
+import { RecurrenceScope } from '../../enums/recurrence-scope.enum';
 
 /**
  * DTO for delete transaction query parameters.
@@ -8,7 +8,8 @@ import { RecurrenceScope } from './recurrence-scope.enum';
  */
 export class DeleteTransactionQueryDto {
   @ApiPropertyOptional({
-    description: 'Scope for deleting recurring transactions. Only applies if the transaction is part of a recurring series.',
+    description:
+      'Scope for deleting recurring transactions. Only applies if the transaction is part of a recurring series.',
     enum: RecurrenceScope,
     example: RecurrenceScope.CURRENT_ONLY,
     default: RecurrenceScope.CURRENT_ONLY,
@@ -17,4 +18,3 @@ export class DeleteTransactionQueryDto {
   @IsOptional()
   recurrenceScope?: RecurrenceScope;
 }
-

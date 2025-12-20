@@ -1,23 +1,20 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import { PrismaService } from 'prisma/prisma.service';
 import { TransactionType, Recurrence } from '@prisma/client';
-import { UpdateTransactionDto } from './models/update-transaction.dto';
-import { DeleteTransactionQueryDto } from './models/delete-transaction-query.dto';
-import { RecurrenceScope } from './models/recurrence-scope.enum';
-import { CreateIncomeDto } from './models/create-income.dto';
-import { CreateBillDto } from './models/create-bill.dto';
-import { CreateSubscriptionDto } from './models/create-subscription.dto';
-import { CreateSavingDto } from './models/create-saving.dto';
-import { CreateExpenseDto } from './models/create-expense.dto';
-import { CreateRefundDto } from './models/create-refund.dto';
-import { GetIncomeQueryDto } from './models/get-income-query.dto';
-import { GetBillsQueryDto } from './models/get-bills-query.dto';
-import { GetSubscriptionsQueryDto } from './models/get-subscriptions-query.dto';
+import { UpdateTransactionDto } from './models/dtos/update/update-transaction.dto';
+import { DeleteTransactionQueryDto } from './models/dtos/query/delete-transaction-query.dto';
+import { RecurrenceScope } from './models/enums/recurrence-scope.enum';
+import { CreateIncomeDto } from './models/dtos/create/create-income.dto';
+import { CreateBillDto } from './models/dtos/create/create-bill.dto';
+import { CreateSubscriptionDto } from './models/dtos/create/create-subscription.dto';
+import { CreateSavingDto } from './models/dtos/create/create-saving.dto';
+import { CreateExpenseDto } from './models/dtos/create/create-expense.dto';
+import { CreateRefundDto } from './models/dtos/create/create-refund.dto';
+import { GetIncomeQueryDto } from './models/dtos/query/get-income-query.dto';
+import { GetBillsQueryDto } from './models/dtos/query/get-bills-query.dto';
+import { GetSubscriptionsQueryDto } from './models/dtos/query/get-subscriptions-query.dto';
 import { BadRequestException } from '@nestjs/common';
 
 describe('TransactionsService', () => {
@@ -358,7 +355,8 @@ describe('TransactionsService', () => {
       };
       const updatedGoal = {
         ...mockSavingsGoal,
-        currentAmount: mockSavingsGoal.currentAmount + inputCreateSavingDto.value,
+        currentAmount:
+          mockSavingsGoal.currentAmount + inputCreateSavingDto.value,
       };
       (prismaService.savingsGoal.findUnique as jest.Mock).mockResolvedValue(
         mockSavingsGoal,
@@ -936,9 +934,9 @@ describe('TransactionsService', () => {
         year: 2024,
       };
 
-      await expect(
-        service.getIncome(mockUserId, queryDto),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.getIncome(mockUserId, queryDto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -1050,9 +1048,9 @@ describe('TransactionsService', () => {
         year: 2024,
       };
 
-      await expect(
-        service.getBills(mockUserId, queryDto),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.getBills(mockUserId, queryDto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -1101,10 +1099,7 @@ describe('TransactionsService', () => {
       );
       (prismaService.transaction.count as jest.Mock).mockResolvedValue(1);
 
-      const actualResult = await service.getSubscriptions(
-        mockUserId,
-        queryDto,
-      );
+      const actualResult = await service.getSubscriptions(mockUserId, queryDto);
 
       expect(actualResult.data).toHaveLength(1);
       expect(actualResult.page).toBe(1);
@@ -1204,4 +1199,3 @@ describe('TransactionsService', () => {
     });
   });
 });
-

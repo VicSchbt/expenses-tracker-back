@@ -22,7 +22,7 @@ import { CreateCategoryDto } from './models/create-category.dto';
 import { UpdateCategoryDto } from './models/update-category.dto';
 import { Category } from './models/category.type';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { Transaction } from '../transactions/models/transaction.type';
+import { Transaction } from '../transactions/models/types/transaction.type';
 import { GetCategoryTransactionsQueryDto } from './models/get-category-transactions-query.dto';
 
 @ApiTags('categories')

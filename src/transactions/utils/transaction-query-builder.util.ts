@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { TransactionType } from '@prisma/client';
-import { PaginatedTransactions } from '../models/paginated-transactions.type';
+import { PaginatedTransactions } from '../models/types/paginated-transactions.type';
 import { mapToTransactionType } from './transaction-mapper.util';
 
 /**

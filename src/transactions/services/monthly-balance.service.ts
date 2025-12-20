@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { TransactionType } from '@prisma/client';
-import { MonthlyBalance } from '../models/monthly-balance.type';
+import { MonthlyBalance } from '../models/types/monthly-balance.type';
 import { buildMonthDateRange } from '../utils/transaction-query-builder.util';
 
 /**

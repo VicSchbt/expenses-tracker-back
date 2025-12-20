@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { TransactionType } from '@prisma/client';
-import { PaginatedTransactions } from '../models/paginated-transactions.type';
-import { MonthYear } from '../models/month-year.type';
-import { GetExpensesRefundsQueryDto } from '../models/get-expenses-refunds-query.dto';
-import { GetIncomeQueryDto } from '../models/get-income-query.dto';
-import { GetBillsQueryDto } from '../models/get-bills-query.dto';
-import { GetSubscriptionsQueryDto } from '../models/get-subscriptions-query.dto';
-import { GetSavingsQueryDto } from '../models/get-savings-query.dto';
+import { PaginatedTransactions } from '../models/types/paginated-transactions.type';
+import { MonthYear } from '../models/types/month-year.type';
+import { GetExpensesRefundsQueryDto } from '../models/dtos/query/get-expenses-refunds-query.dto';
+import { GetIncomeQueryDto } from '../models/dtos/query/get-income-query.dto';
+import { GetBillsQueryDto } from '../models/dtos/query/get-bills-query.dto';
+import { GetSubscriptionsQueryDto } from '../models/dtos/query/get-subscriptions-query.dto';
+import { GetSavingsQueryDto } from '../models/dtos/query/get-savings-query.dto';
 import {
   normalizeYearMonth,
   buildTransactionWhereClause,
