@@ -24,3 +24,5 @@ CREATE INDEX "MonthlyBalanceSummary_userId_year_month_idx" ON "MonthlyBalanceSum
 
 -- AddForeignKey
 ALTER TABLE "MonthlyBalanceSummary" ADD CONSTRAINT "MonthlyBalanceSummary_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+

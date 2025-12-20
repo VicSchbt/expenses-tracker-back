@@ -1,11 +1,5 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { TransactionType, Recurrence } from '@prisma/client';
 import { CreateIncomeDto } from './models/create-income.dto';
 import { CreateBillDto } from './models/create-bill.dto';
 import { CreateSubscriptionDto } from './models/create-subscription.dto';
@@ -23,391 +17,80 @@ import { GetSubscriptionsQueryDto } from './models/get-subscriptions-query.dto';
 import { GetSavingsQueryDto } from './models/get-savings-query.dto';
 import { UpdateTransactionDto } from './models/update-transaction.dto';
 import { DeleteTransactionQueryDto } from './models/delete-transaction-query.dto';
-import { RecurrenceScope } from './models/recurrence-scope.enum';
-import {
-  generateFutureOccurrenceDates,
-  calculateNextRecurrenceDate,
-} from './utils/recurrence-date.util';
+import { MonthlyBalanceService } from './services/monthly-balance.service';
+import { SavingsGoalIntegrationService } from './services/savings-goal-integration.service';
+import { TransactionCreationService } from './services/transaction-creation.service';
+import { TransactionQueryService } from './services/transaction-query.service';
+import { TransactionUpdateService } from './services/transaction-update.service';
+import { TransactionDeletionService } from './services/transaction-deletion.service';
 
 @Injectable()
 export class TransactionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly monthlyBalanceService: MonthlyBalanceService,
+    private readonly savingsGoalIntegrationService: SavingsGoalIntegrationService,
+    private readonly transactionCreationService: TransactionCreationService,
+    private readonly transactionQueryService: TransactionQueryService,
+    private readonly transactionUpdateService: TransactionUpdateService,
+    private readonly transactionDeletionService: TransactionDeletionService,
+  ) {}
 
   async createIncome(
     userId: string,
     createIncomeDto: CreateIncomeDto,
   ): Promise<Transaction> {
-    const transactionDate = new Date(createIncomeDto.date);
-    const recurrenceEndDate = createIncomeDto.recurrenceEndDate
-      ? new Date(createIncomeDto.recurrenceEndDate)
-      : null;
-    const isAuto = createIncomeDto.isAuto ?? false;
-    const isPaid =
-      createIncomeDto.isPaid !== undefined
-        ? createIncomeDto.isPaid
-        : isAuto
-          ? true
-          : false;
-    const parentTransaction = await this.prisma.transaction.create({
-      data: {
-        userId,
-        label: createIncomeDto.label,
-        date: transactionDate,
-        value: createIncomeDto.value,
-        type: TransactionType.INCOME,
-        recurrence: createIncomeDto.recurrence,
-        recurrenceCount: createIncomeDto.recurrenceCount ?? null,
-        recurrenceEndDate,
-        isPaid,
-        isAuto,
-      } as any,
-    });
-    if (createIncomeDto.recurrence) {
-      const maxOccurrences = createIncomeDto.recurrenceCount
-        ? createIncomeDto.recurrenceCount - 1
-        : 12;
-      const futureDates = generateFutureOccurrenceDates(
-        transactionDate,
-        createIncomeDto.recurrence,
-        recurrenceEndDate,
-        maxOccurrences,
-      );
-      if (futureDates.length > 0) {
-        await this.prisma.transaction.createMany({
-          data: futureDates.map((date) => ({
-            userId,
-            label: createIncomeDto.label,
-            date,
-            value: createIncomeDto.value,
-            type: TransactionType.INCOME,
-            recurrence: createIncomeDto.recurrence,
-            recurrenceEndDate,
-            parentTransactionId: parentTransaction.id,
-            isPaid,
-            isAuto,
-          })),
-        });
-        const uniqueMonths = new Set<string>();
-        uniqueMonths.add(
-          `${transactionDate.getFullYear()}-${transactionDate.getMonth() + 1}`,
-        );
-        for (const date of futureDates) {
-          uniqueMonths.add(`${date.getFullYear()}-${date.getMonth() + 1}`);
-        }
-        for (const monthKey of uniqueMonths) {
-          const [year, month] = monthKey.split('-').map(Number);
-          await this.invalidateMonthlyBalance(userId, year, month);
-        }
-      } else {
-        await this.invalidateMonthlyBalanceForDate(userId, transactionDate);
-      }
-    } else {
-      await this.invalidateMonthlyBalanceForDate(userId, transactionDate);
-    }
-    return await this.mapToTransactionType(parentTransaction);
+    return this.transactionCreationService.createIncome(
+      userId,
+      createIncomeDto,
+    );
   }
 
   async createBill(
     userId: string,
     createBillDto: CreateBillDto,
   ): Promise<Transaction> {
-    const transactionDate = new Date(createBillDto.date);
-    const recurrenceEndDate = createBillDto.recurrenceEndDate
-      ? new Date(createBillDto.recurrenceEndDate)
-      : null;
-    const isAuto = createBillDto.isAuto ?? false;
-    const isPaid =
-      createBillDto.isPaid !== undefined
-        ? createBillDto.isPaid
-        : isAuto
-          ? true
-          : false;
-    const parentTransaction = await this.prisma.transaction.create({
-      data: {
-        userId,
-        label: createBillDto.label,
-        date: transactionDate,
-        value: createBillDto.value,
-        type: TransactionType.BILL,
-        recurrence: createBillDto.recurrence,
-        recurrenceCount: createBillDto.recurrenceCount ?? null,
-        recurrenceEndDate,
-        isPaid,
-        isAuto,
-      } as any,
-    });
-    if (createBillDto.recurrence) {
-      const maxOccurrences = createBillDto.recurrenceCount
-        ? createBillDto.recurrenceCount - 1
-        : 12;
-      const futureDates = generateFutureOccurrenceDates(
-        transactionDate,
-        createBillDto.recurrence,
-        recurrenceEndDate,
-        maxOccurrences,
-      );
-      if (futureDates.length > 0) {
-        await this.prisma.transaction.createMany({
-          data: futureDates.map((date) => ({
-            userId,
-            label: createBillDto.label,
-            date,
-            value: createBillDto.value,
-            type: TransactionType.BILL,
-            recurrence: createBillDto.recurrence,
-            recurrenceEndDate,
-            parentTransactionId: parentTransaction.id,
-            isPaid,
-            isAuto,
-          })),
-        });
-      }
-    }
-    return this.mapToTransactionType(parentTransaction);
+    return this.transactionCreationService.createBill(userId, createBillDto);
   }
 
   async createSubscription(
     userId: string,
     createSubscriptionDto: CreateSubscriptionDto,
   ): Promise<Transaction> {
-    const transactionDate = new Date(createSubscriptionDto.date);
-    const recurrenceEndDate = createSubscriptionDto.recurrenceEndDate
-      ? new Date(createSubscriptionDto.recurrenceEndDate)
-      : null;
-    const isAuto = createSubscriptionDto.isAuto ?? false;
-    const isPaid =
-      createSubscriptionDto.isPaid !== undefined
-        ? createSubscriptionDto.isPaid
-        : isAuto
-          ? true
-          : false;
-    const parentTransaction = await this.prisma.transaction.create({
-      data: {
-        userId,
-        label: createSubscriptionDto.label,
-        date: transactionDate,
-        value: createSubscriptionDto.value,
-        type: TransactionType.SUBSCRIPTION,
-        recurrence: createSubscriptionDto.recurrence,
-        recurrenceCount: createSubscriptionDto.recurrenceCount ?? null,
-        recurrenceEndDate,
-        isPaid,
-        isAuto,
-      } as any,
-    });
-    if (createSubscriptionDto.recurrence) {
-      const maxOccurrences = createSubscriptionDto.recurrenceCount
-        ? createSubscriptionDto.recurrenceCount - 1
-        : 12;
-      const futureDates = generateFutureOccurrenceDates(
-        transactionDate,
-        createSubscriptionDto.recurrence,
-        recurrenceEndDate,
-        maxOccurrences,
-      );
-      if (futureDates.length > 0) {
-        await this.prisma.transaction.createMany({
-          data: futureDates.map((date) => ({
-            userId,
-            label: createSubscriptionDto.label,
-            date,
-            value: createSubscriptionDto.value,
-            type: TransactionType.SUBSCRIPTION,
-            recurrence: createSubscriptionDto.recurrence,
-            recurrenceEndDate,
-            parentTransactionId: parentTransaction.id,
-            isPaid,
-            isAuto,
-          })),
-        });
-        const uniqueMonths = new Set<string>();
-        uniqueMonths.add(
-          `${transactionDate.getFullYear()}-${transactionDate.getMonth() + 1}`,
-        );
-        for (const date of futureDates) {
-          uniqueMonths.add(`${date.getFullYear()}-${date.getMonth() + 1}`);
-        }
-        for (const monthKey of uniqueMonths) {
-          const [year, month] = monthKey.split('-').map(Number);
-          await this.invalidateMonthlyBalance(userId, year, month);
-        }
-      } else {
-        await this.invalidateMonthlyBalanceForDate(userId, transactionDate);
-      }
-    } else {
-      await this.invalidateMonthlyBalanceForDate(userId, transactionDate);
-    }
-    return await this.mapToTransactionType(parentTransaction);
+    return this.transactionCreationService.createSubscription(
+      userId,
+      createSubscriptionDto,
+    );
   }
 
   async createSaving(
     userId: string,
     createSavingDto: CreateSavingDto,
   ): Promise<Transaction> {
-    const goal = await this.prisma.savingsGoal.findUnique({
-      where: { id: createSavingDto.goalId },
-    });
-    if (!goal) {
-      throw new NotFoundException('Savings goal not found');
-    }
-    if (goal.userId !== userId) {
-      throw new ForbiddenException(
-        'You do not have access to this savings goal',
-      );
-    }
-    const transactionDate = new Date(createSavingDto.date);
-    const recurrenceEndDate = createSavingDto.recurrenceEndDate
-      ? new Date(createSavingDto.recurrenceEndDate)
-      : null;
-    const isAuto = createSavingDto.isAuto ?? false;
-    const isPaid =
-      createSavingDto.isPaid !== undefined
-        ? createSavingDto.isPaid
-        : isAuto
-          ? true
-          : true;
-    const parentTransaction = await this.prisma.transaction.create({
-      data: {
-        userId,
-        label: `Saving to ${goal.name}`,
-        date: transactionDate,
-        value: createSavingDto.value,
-        type: TransactionType.SAVINGS,
-        goalId: createSavingDto.goalId,
-        recurrence: createSavingDto.recurrence,
-        recurrenceCount: createSavingDto.recurrenceCount ?? null,
-        recurrenceEndDate,
-        isPaid,
-        isAuto,
-      } as any,
-    });
-    let instancesCount = 1;
-    if (createSavingDto.recurrence) {
-      const maxOccurrences = createSavingDto.recurrenceCount
-        ? createSavingDto.recurrenceCount - 1
-        : 12;
-      const futureDates = generateFutureOccurrenceDates(
-        transactionDate,
-        createSavingDto.recurrence,
-        recurrenceEndDate,
-        maxOccurrences,
-      );
-      if (futureDates.length > 0) {
-        await this.prisma.transaction.createMany({
-          data: futureDates.map((date) => ({
-            userId,
-            label: `Saving to ${goal.name}`,
-            date,
-            value: createSavingDto.value,
-            type: TransactionType.SAVINGS,
-            goalId: createSavingDto.goalId,
-            recurrence: createSavingDto.recurrence,
-            recurrenceEndDate,
-            parentTransactionId: parentTransaction.id,
-            isPaid,
-            isAuto,
-          })),
-        });
-        instancesCount += futureDates.length;
-      }
-    }
-    await this.prisma.savingsGoal.update({
-      where: { id: createSavingDto.goalId },
-      data: {
-        currentAmount: {
-          increment: createSavingDto.value * instancesCount,
-        },
-      },
-    });
-    await this.invalidateMonthlyBalanceForDate(userId, transactionDate);
-    return await this.mapToTransactionType(parentTransaction);
+    return this.transactionCreationService.createSaving(
+      userId,
+      createSavingDto,
+    );
   }
 
   async createExpense(
     userId: string,
     createExpenseDto: CreateExpenseDto,
   ): Promise<Transaction> {
-    if (createExpenseDto.categoryId) {
-      await this.validateCategoryOwnership(userId, createExpenseDto.categoryId);
-    }
-    const transactionDate = new Date(createExpenseDto.date);
-    const recurrenceEndDate = createExpenseDto.recurrenceEndDate
-      ? new Date(createExpenseDto.recurrenceEndDate)
-      : null;
-    const isAuto = createExpenseDto.isAuto ?? false;
-    const isPaid =
-      createExpenseDto.isPaid !== undefined
-        ? createExpenseDto.isPaid
-        : isAuto
-          ? true
-          : true;
-    const parentTransaction = await this.prisma.transaction.create({
-      data: {
-        userId,
-        label: createExpenseDto.label,
-        date: transactionDate,
-        value: createExpenseDto.value,
-        type: TransactionType.EXPENSE,
-        categoryId: createExpenseDto.categoryId,
-        recurrence: createExpenseDto.recurrence,
-        recurrenceCount: createExpenseDto.recurrenceCount ?? null,
-        recurrenceEndDate,
-        isPaid,
-        isAuto,
-      } as any,
-    });
-    if (createExpenseDto.recurrence) {
-      const maxOccurrences = createExpenseDto.recurrenceCount
-        ? createExpenseDto.recurrenceCount - 1
-        : 12;
-      const futureDates = generateFutureOccurrenceDates(
-        transactionDate,
-        createExpenseDto.recurrence,
-        recurrenceEndDate,
-        maxOccurrences,
-      );
-      if (futureDates.length > 0) {
-        await this.prisma.transaction.createMany({
-          data: futureDates.map((date) => ({
-            userId,
-            label: createExpenseDto.label,
-            date,
-            value: createExpenseDto.value,
-            type: TransactionType.EXPENSE,
-            categoryId: createExpenseDto.categoryId,
-            recurrence: createExpenseDto.recurrence,
-            recurrenceEndDate,
-            parentTransactionId: parentTransaction.id,
-            isPaid,
-            isAuto,
-          })),
-        });
-      }
-    }
-    return await this.mapToTransactionType(parentTransaction);
+    return this.transactionCreationService.createExpense(
+      userId,
+      createExpenseDto,
+    );
   }
 
   async createRefund(
     userId: string,
     createRefundDto: CreateRefundDto,
   ): Promise<Transaction> {
-    await this.validateCategoryOwnership(userId, createRefundDto.categoryId);
-    const transaction = await this.prisma.transaction.create({
-      data: {
-        userId,
-        label: createRefundDto.label,
-        date: new Date(createRefundDto.date),
-        value: createRefundDto.value,
-        type: TransactionType.REFUND,
-        categoryId: createRefundDto.categoryId,
-        isPaid: createRefundDto.isPaid ?? true,
-      },
-    });
-    await this.invalidateMonthlyBalanceForDate(
+    return this.transactionCreationService.createRefund(
       userId,
-      new Date(createRefundDto.date),
+      createRefundDto,
     );
-    return this.mapToTransactionType(transaction);
   }
 
   async updateTransaction(
@@ -415,193 +98,11 @@ export class TransactionsService {
     id: string,
     updateTransactionDto: UpdateTransactionDto,
   ): Promise<Transaction> {
-    const existingTransaction = await this.prisma.transaction.findUnique({
-      where: { id },
-      include: {
-        childTransactions: true,
-      },
-    });
-    if (!existingTransaction) {
-      throw new NotFoundException('Transaction not found');
-    }
-    if (existingTransaction.userId !== userId) {
-      throw new ForbiddenException(
-        'You do not have access to this transaction',
-      );
-    }
-    if (updateTransactionDto.categoryId) {
-      await this.validateCategoryOwnership(
-        userId,
-        updateTransactionDto.categoryId,
-      );
-    }
-    const isRecurringParent =
-      existingTransaction.recurrence !== null &&
-      !existingTransaction.parentTransactionId;
-    const isRecurringChild = existingTransaction.parentTransactionId !== null;
-    const scope =
-      updateTransactionDto.recurrenceScope || RecurrenceScope.CURRENT_ONLY;
-    const data: any = {};
-    if (updateTransactionDto.label !== undefined) {
-      data.label = updateTransactionDto.label;
-    }
-    if (updateTransactionDto.date !== undefined) {
-      data.date = new Date(updateTransactionDto.date);
-    }
-    if (updateTransactionDto.value !== undefined) {
-      data.value = updateTransactionDto.value;
-    }
-    if (updateTransactionDto.categoryId !== undefined) {
-      data.categoryId = updateTransactionDto.categoryId;
-    }
-    if (updateTransactionDto.recurrence !== undefined) {
-      data.recurrence = updateTransactionDto.recurrence;
-    }
-    if (updateTransactionDto.isPaid !== undefined) {
-      data.isPaid = updateTransactionDto.isPaid;
-    }
-    if (updateTransactionDto.recurrenceEndDate !== undefined) {
-      data.recurrenceEndDate = updateTransactionDto.recurrenceEndDate
-        ? new Date(updateTransactionDto.recurrenceEndDate)
-        : null;
-    }
-    if (
-      existingTransaction.type === TransactionType.SAVINGS &&
-      updateTransactionDto.value !== undefined &&
-      existingTransaction.goalId
-    ) {
-      const existingValue = Number(existingTransaction.value);
-      const difference = updateTransactionDto.value - existingValue;
-      if (difference !== 0) {
-        await this.prisma.savingsGoal.update({
-          where: { id: existingTransaction.goalId },
-          data: {
-            currentAmount: {
-              increment: difference,
-            },
-          },
-        });
-      }
-    }
-    const recurringData: any = { ...data };
-    delete recurringData.date;
-    if (isRecurringParent || isRecurringChild) {
-      const parentId = isRecurringParent
-        ? id
-        : existingTransaction.parentTransactionId!;
-      if (scope === RecurrenceScope.ALL) {
-        const affectedTransactions = await this.prisma.transaction.findMany({
-          where: {
-            OR: [{ id: parentId }, { parentTransactionId: parentId }],
-          },
-        });
-        if (
-          existingTransaction.type === TransactionType.SAVINGS &&
-          updateTransactionDto.value !== undefined &&
-          existingTransaction.goalId
-        ) {
-          const existingValue = Number(existingTransaction.value);
-          const newValue = updateTransactionDto.value;
-          const difference = newValue - existingValue;
-          if (difference !== 0) {
-            const affectedCount = affectedTransactions.filter(
-              (t) => t.goalId === existingTransaction.goalId,
-            ).length;
-            await this.prisma.savingsGoal.update({
-              where: { id: existingTransaction.goalId },
-              data: {
-                currentAmount: {
-                  increment: difference * affectedCount,
-                },
-              },
-            });
-          }
-        }
-        await this.prisma.transaction.updateMany({
-          where: {
-            OR: [{ id: parentId }, { parentTransactionId: parentId }],
-          },
-          data: recurringData,
-        });
-      } else if (scope === RecurrenceScope.CURRENT_AND_FUTURE) {
-        const currentDate = existingTransaction.date;
-        const affectedTransactions = await this.prisma.transaction.findMany({
-          where: {
-            OR: [
-              { id: parentId },
-              {
-                parentTransactionId: parentId,
-                date: { gte: currentDate },
-              },
-            ],
-          },
-        });
-        if (
-          existingTransaction.type === TransactionType.SAVINGS &&
-          updateTransactionDto.value !== undefined &&
-          existingTransaction.goalId
-        ) {
-          const existingValue = Number(existingTransaction.value);
-          const newValue = updateTransactionDto.value;
-          const difference = newValue - existingValue;
-          if (difference !== 0) {
-            const affectedCount = affectedTransactions.filter(
-              (t) => t.goalId === existingTransaction.goalId,
-            ).length;
-            await this.prisma.savingsGoal.update({
-              where: { id: existingTransaction.goalId },
-              data: {
-                currentAmount: {
-                  increment: difference * affectedCount,
-                },
-              },
-            });
-          }
-        }
-        await this.prisma.transaction.updateMany({
-          where: {
-            OR: [
-              { id: parentId },
-              {
-                parentTransactionId: parentId,
-                date: { gte: currentDate },
-              },
-            ],
-          },
-          data: recurringData,
-        });
-      }
-    }
-    const updatedTransaction = await this.prisma.transaction.update({
-      where: { id },
-      data,
-    });
-    await this.invalidateMonthlyBalanceForDate(
+    return this.transactionUpdateService.updateTransaction(
       userId,
-      existingTransaction.date,
+      id,
+      updateTransactionDto,
     );
-    if (updateTransactionDto.date) {
-      const newDate = new Date(updateTransactionDto.date);
-      if (
-        newDate.getFullYear() !== existingTransaction.date.getFullYear() ||
-        newDate.getMonth() !== existingTransaction.date.getMonth()
-      ) {
-        await this.invalidateMonthlyBalanceForDate(userId, newDate);
-      }
-    }
-    if (isRecurringParent && scope === RecurrenceScope.ALL) {
-      const uniqueMonths = new Set<string>();
-      for (const child of existingTransaction.childTransactions) {
-        uniqueMonths.add(
-          `${child.date.getFullYear()}-${child.date.getMonth() + 1}`,
-        );
-      }
-      for (const monthKey of uniqueMonths) {
-        const [year, month] = monthKey.split('-').map(Number);
-        await this.invalidateMonthlyBalance(userId, year, month);
-      }
-    }
-    return await this.mapToTransactionType(updatedTransaction);
   }
 
   async updateIsAuto(
@@ -609,52 +110,7 @@ export class TransactionsService {
     id: string,
     isAuto: boolean,
   ): Promise<Transaction> {
-    const existingTransaction = await this.prisma.transaction.findUnique({
-      where: { id },
-      include: {
-        childTransactions: true,
-      },
-    });
-    if (!existingTransaction) {
-      throw new NotFoundException('Transaction not found');
-    }
-    if (existingTransaction.userId !== userId) {
-      throw new ForbiddenException(
-        'You do not have access to this transaction',
-      );
-    }
-    if (!existingTransaction.recurrence) {
-      throw new BadRequestException(
-        'Transaction does not have recurrence. isAuto can only be set for recurring transactions.',
-      );
-    }
-    const isPaid = isAuto ? true : false;
-    const isRecurringParent =
-      existingTransaction.recurrence !== null &&
-      !existingTransaction.parentTransactionId;
-    if (isRecurringParent) {
-      await this.prisma.transaction.updateMany({
-        where: {
-          OR: [{ id }, { parentTransactionId: id }],
-        },
-        data: {
-          isAuto,
-          isPaid,
-        },
-      });
-    } else {
-      await this.prisma.transaction.update({
-        where: { id },
-        data: {
-          isAuto,
-          isPaid,
-        },
-      });
-    }
-    const updatedTransaction = await this.prisma.transaction.findUnique({
-      where: { id },
-    });
-    return await this.mapToTransactionType(updatedTransaction!);
+    return this.transactionUpdateService.updateIsAuto(userId, id, isAuto);
   }
 
   async removeTransaction(
@@ -662,458 +118,31 @@ export class TransactionsService {
     id: string,
     queryDto?: DeleteTransactionQueryDto,
   ): Promise<void> {
-    const existingTransaction = await this.prisma.transaction.findUnique({
-      where: { id },
-      include: {
-        childTransactions: true,
-      },
-    });
-    if (!existingTransaction) {
-      throw new NotFoundException('Transaction not found');
-    }
-    if (existingTransaction.userId !== userId) {
-      throw new ForbiddenException(
-        'You do not have access to this transaction',
-      );
-    }
-    const isRecurringParent =
-      existingTransaction.recurrence !== null &&
-      !existingTransaction.parentTransactionId;
-    const isRecurringChild = existingTransaction.parentTransactionId !== null;
-    const scope = queryDto?.recurrenceScope || RecurrenceScope.CURRENT_ONLY;
-    if (isRecurringParent || isRecurringChild) {
-      const parentId = isRecurringParent
-        ? id
-        : existingTransaction.parentTransactionId!;
-      if (scope === RecurrenceScope.ALL) {
-        const allTransactions = await this.prisma.transaction.findMany({
-          where: {
-            OR: [{ id: parentId }, { parentTransactionId: parentId }],
-          },
-        });
-        for (const transaction of allTransactions) {
-          if (
-            transaction.type === TransactionType.SAVINGS &&
-            transaction.goalId
-          ) {
-            const value = Number(transaction.value);
-            await this.prisma.savingsGoal.update({
-              where: { id: transaction.goalId },
-              data: {
-                currentAmount: {
-                  increment: -value,
-                },
-              },
-            });
-          }
-        }
-        const allTransactionsToDelete = await this.prisma.transaction.findMany({
-          where: {
-            OR: [{ id: parentId }, { parentTransactionId: parentId }],
-          },
-        });
-        const uniqueMonths = new Set<string>();
-        for (const transaction of allTransactionsToDelete) {
-          uniqueMonths.add(
-            `${transaction.date.getFullYear()}-${transaction.date.getMonth() + 1}`,
-          );
-        }
-        await this.prisma.transaction.deleteMany({
-          where: {
-            OR: [{ id: parentId }, { parentTransactionId: parentId }],
-          },
-        });
-        for (const monthKey of uniqueMonths) {
-          const [year, month] = monthKey.split('-').map(Number);
-          await this.invalidateMonthlyBalance(userId, year, month);
-        }
-        return;
-      } else if (scope === RecurrenceScope.CURRENT_AND_FUTURE) {
-        const currentDate = existingTransaction.date;
-        const futureTransactions = await this.prisma.transaction.findMany({
-          where: {
-            OR: [
-              { id: parentId },
-              {
-                parentTransactionId: parentId,
-                date: { gte: currentDate },
-              },
-            ],
-          },
-        });
-        for (const transaction of futureTransactions) {
-          if (
-            transaction.type === TransactionType.SAVINGS &&
-            transaction.goalId
-          ) {
-            const value = Number(transaction.value);
-            await this.prisma.savingsGoal.update({
-              where: { id: transaction.goalId },
-              data: {
-                currentAmount: {
-                  increment: -value,
-                },
-              },
-            });
-          }
-        }
-        const futureTransactionsToDelete =
-          await this.prisma.transaction.findMany({
-            where: {
-              OR: [
-                { id: parentId },
-                {
-                  parentTransactionId: parentId,
-                  date: { gte: currentDate },
-                },
-              ],
-            },
-          });
-        const uniqueMonths = new Set<string>();
-        for (const transaction of futureTransactionsToDelete) {
-          uniqueMonths.add(
-            `${transaction.date.getFullYear()}-${transaction.date.getMonth() + 1}`,
-          );
-        }
-        await this.prisma.transaction.deleteMany({
-          where: {
-            OR: [
-              { id: parentId },
-              {
-                parentTransactionId: parentId,
-                date: { gte: currentDate },
-              },
-            ],
-          },
-        });
-        for (const monthKey of uniqueMonths) {
-          const [year, month] = monthKey.split('-').map(Number);
-          await this.invalidateMonthlyBalance(userId, year, month);
-        }
-        return;
-      }
-    }
-    if (
-      existingTransaction.type === TransactionType.SAVINGS &&
-      existingTransaction.goalId
-    ) {
-      const existingValue = Number(existingTransaction.value);
-      await this.prisma.savingsGoal.update({
-        where: { id: existingTransaction.goalId },
-        data: {
-          currentAmount: {
-            increment: -existingValue,
-          },
-        },
-      });
-    }
-    await this.invalidateMonthlyBalanceForDate(
+    return this.transactionDeletionService.removeTransaction(
       userId,
-      existingTransaction.date,
+      id,
+      queryDto,
     );
-    await this.prisma.transaction.delete({
-      where: { id },
-    });
-  }
-
-  private async validateCategoryOwnership(
-    userId: string,
-    categoryId: string,
-  ): Promise<void> {
-    const category = await this.prisma.category.findUnique({
-      where: { id: categoryId },
-    });
-    if (!category) {
-      throw new NotFoundException('Category not found');
-    }
-    if (category.userId !== userId) {
-      throw new ForbiddenException('You do not have access to this category');
-    }
   }
 
   /**
    * Calculates the monthly balance for a given user and month.
-   * Uses cached values if available, otherwise calculates and caches.
-   * Balance is CUMULATIVE (includes all previous months).
-   * Formula: previousMonthBalance + (Income + Refunds - Bills - Savings - Subscriptions - Expenses)
-   * Bills, Savings, and Subscriptions are considered "planned" for the month.
-   * Expenses and Refunds are actual transactions that occurred.
+   * Delegates to MonthlyBalanceService.
    */
   async getMonthlyBalance(
     userId: string,
     year: number,
     month: number,
   ): Promise<MonthlyBalance> {
-    if (month < 1 || month > 12) {
-      throw new BadRequestException('Month must be between 1 and 12');
-    }
-    const cachedBalance = await this.prisma.monthlyBalanceSummary.findUnique({
-      where: {
-        userId_year_month: {
-          userId,
-          year,
-          month,
-        },
-      },
-    });
-    let totalIncome: number;
-    let totalBills: number;
-    let totalSavings: number;
-    let totalSubscriptions: number;
-    let totalExpenses: number;
-    let totalRefunds: number;
-    let balance: number;
-    let previousMonthBalance: number | null = null;
-    if (cachedBalance) {
-      totalIncome = Number(cachedBalance.totalIncome);
-      totalBills = Number(cachedBalance.totalBills);
-      totalSavings = Number(cachedBalance.totalSavings);
-      totalSubscriptions = Number(cachedBalance.totalSubscriptions);
-      totalExpenses = Number(cachedBalance.totalExpenses);
-      totalRefunds = Number(cachedBalance.totalRefunds);
-      balance = Number(cachedBalance.balance);
-      previousMonthBalance = await this.getPreviousMonthBalanceFromCache(
-        userId,
-        year,
-        month,
-      );
-    } else {
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
-      const transactions = await this.prisma.transaction.findMany({
-        where: {
-          userId,
-          date: { gte: startDate, lte: endDate },
-        },
-      });
-      totalIncome = 0;
-      totalBills = 0;
-      totalSavings = 0;
-      totalSubscriptions = 0;
-      totalExpenses = 0;
-      totalRefunds = 0;
-      transactions.forEach((transaction) => {
-        const value = Number(transaction.value);
-        switch (transaction.type) {
-          case TransactionType.INCOME:
-            totalIncome += value;
-            break;
-          case TransactionType.BILL:
-            totalBills += value;
-            break;
-          case TransactionType.SAVINGS:
-            totalSavings += value;
-            break;
-          case TransactionType.SUBSCRIPTION:
-            totalSubscriptions += value;
-            break;
-          case TransactionType.EXPENSE:
-            totalExpenses += value;
-            break;
-          case TransactionType.REFUND:
-            totalRefunds += value;
-            break;
-        }
-      });
-      const monthDelta =
-        totalIncome +
-        totalRefunds -
-        totalBills -
-        totalSavings -
-        totalSubscriptions -
-        totalExpenses;
-      previousMonthBalance = await this.getPreviousMonthBalanceFromCache(
-        userId,
-        year,
-        month,
-      );
-      balance = (previousMonthBalance || 0) + monthDelta;
-      await this.prisma.monthlyBalanceSummary.upsert({
-        where: {
-          userId_year_month: {
-            userId,
-            year,
-            month,
-          },
-        },
-        create: {
-          userId,
-          year,
-          month,
-          totalIncome,
-          totalBills,
-          totalSavings,
-          totalSubscriptions,
-          totalExpenses,
-          totalRefunds,
-          balance,
-        },
-        update: {
-          totalIncome,
-          totalBills,
-          totalSavings,
-          totalSubscriptions,
-          totalExpenses,
-          totalRefunds,
-          balance,
-        },
-      });
-    }
-    return {
-      year,
-      month,
-      totalIncome,
-      totalBills,
-      totalSavings,
-      totalSubscriptions,
-      totalExpenses,
-      totalRefunds,
-      balance,
-      previousMonthBalance,
-    };
+    return this.monthlyBalanceService.getMonthlyBalance(userId, year, month);
   }
 
   /**
    * Calculates the monthly balance for the previous month.
-   * Formula: Income + Refunds - Bills - Savings - Subscriptions - Expenses
+   * Delegates to MonthlyBalanceService.
    */
   async getPreviousMonthBalance(userId: string): Promise<MonthlyBalance> {
-    const now = new Date();
-    let previousMonth = now.getMonth() + 1;
-    let previousYear = now.getFullYear();
-
-    if (previousMonth === 1) {
-      previousMonth = 12;
-      previousYear -= 1;
-    } else {
-      previousMonth -= 1;
-    }
-
-    return this.getMonthlyBalance(userId, previousYear, previousMonth);
-  }
-
-  /**
-   * Invalidates and recalculates the monthly balance cache for a date's month.
-   * This should be called when transactions are created, updated, or deleted.
-   */
-  private async invalidateMonthlyBalanceForDate(
-    userId: string,
-    date: Date,
-  ): Promise<void> {
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    await this.invalidateMonthlyBalance(userId, year, month);
-  }
-
-  /**
-   * Invalidates and recalculates the monthly balance cache for a specific month.
-   * This should be called when transactions are created, updated, or deleted.
-   */
-  private async invalidateMonthlyBalance(
-    userId: string,
-    year: number,
-    month: number,
-  ): Promise<void> {
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
-    const transactions = await this.prisma.transaction.findMany({
-      where: {
-        userId,
-        date: { gte: startDate, lte: endDate },
-      },
-    });
-    let totalIncome = 0;
-    let totalBills = 0;
-    let totalSavings = 0;
-    let totalSubscriptions = 0;
-    let totalExpenses = 0;
-    let totalRefunds = 0;
-    transactions.forEach((transaction) => {
-      const value = Number(transaction.value);
-      switch (transaction.type) {
-        case TransactionType.INCOME:
-          totalIncome += value;
-          break;
-        case TransactionType.BILL:
-          totalBills += value;
-          break;
-        case TransactionType.SAVINGS:
-          totalSavings += value;
-          break;
-        case TransactionType.SUBSCRIPTION:
-          totalSubscriptions += value;
-          break;
-        case TransactionType.EXPENSE:
-          totalExpenses += value;
-          break;
-        case TransactionType.REFUND:
-          totalRefunds += value;
-          break;
-      }
-    });
-    const balance =
-      totalIncome +
-      totalRefunds -
-      totalBills -
-      totalSavings -
-      totalSubscriptions -
-      totalExpenses;
-    await this.prisma.monthlyBalanceSummary.upsert({
-      where: {
-        userId_year_month: {
-          userId,
-          year,
-          month,
-        },
-      },
-      create: {
-        userId,
-        year,
-        month,
-        totalIncome,
-        totalBills,
-        totalSavings,
-        totalSubscriptions,
-        totalExpenses,
-        totalRefunds,
-        balance,
-      },
-      update: {
-        totalIncome,
-        totalBills,
-        totalSavings,
-        totalSubscriptions,
-        totalExpenses,
-        totalRefunds,
-        balance,
-      },
-    });
-  }
-
-  /**
-   * Gets the previous month's balance from cache, or null if not available.
-   */
-  private async getPreviousMonthBalanceFromCache(
-    userId: string,
-    year: number,
-    month: number,
-  ): Promise<number | null> {
-    let previousMonth = month - 1;
-    let previousYear = year;
-    if (previousMonth === 0) {
-      previousMonth = 12;
-      previousYear -= 1;
-    }
-    const cachedBalance = await this.prisma.monthlyBalanceSummary.findUnique({
-      where: {
-        userId_year_month: {
-          userId,
-          year: previousYear,
-          month: previousMonth,
-        },
-      },
-    });
-    return cachedBalance ? Number(cachedBalance.balance) : null;
+    return this.monthlyBalanceService.getPreviousMonthBalance(userId);
   }
 
   /**
@@ -1126,685 +155,86 @@ export class TransactionsService {
     userId: string,
     queryDto: GetExpensesRefundsQueryDto,
   ): Promise<PaginatedTransactions> {
-    const page = queryDto.page ?? 1;
-    const limit = queryDto.limit ?? 20;
-    const skip = (page - 1) * limit;
-    const now = new Date();
-    let year = queryDto.year;
-    let month = queryDto.month;
-    if (year && !month) {
-      throw new BadRequestException('Month is required when year is provided');
-    }
-    if (month && !year) {
-      year = now.getFullYear();
-    }
-    const whereClause: any = {
-      userId,
-      type: {
-        in: [TransactionType.EXPENSE, TransactionType.REFUND],
-      },
-    };
-    if (year && month) {
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
-      whereClause.date = {
-        gte: startDate,
-        lte: endDate,
-      };
-    }
-    const [transactions, total] = await Promise.all([
-      this.prisma.transaction.findMany({
-        where: whereClause,
-        skip,
-        take: limit,
-        orderBy: {
-          date: 'desc',
-        },
-      }),
-      this.prisma.transaction.count({
-        where: whereClause,
-      }),
-    ]);
-    const totalPages = Math.ceil(total / limit);
-    const mappedTransactions = await Promise.all(
-      transactions.map((transaction) => this.mapToTransactionType(transaction)),
-    );
-    return {
-      data: mappedTransactions,
-      page,
-      limit,
-      total,
-      totalPages,
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1,
-    };
+    return this.transactionQueryService.getExpensesAndRefunds(userId, queryDto);
   }
 
-  /**
-   * Fetches expenses and refunds for the current month with pagination.
-   */
   async getCurrentMonthExpensesAndRefunds(
     userId: string,
     page: number = 1,
     limit: number = 20,
   ): Promise<PaginatedTransactions> {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
-    const skip = (page - 1) * limit;
-    const whereClause = {
+    return this.transactionQueryService.getCurrentMonthExpensesAndRefunds(
       userId,
-      type: {
-        in: [TransactionType.EXPENSE, TransactionType.REFUND],
-      },
-      date: {
-        gte: startDate,
-        lte: endDate,
-      },
-    };
-    const [transactions, total] = await Promise.all([
-      this.prisma.transaction.findMany({
-        where: whereClause,
-        skip,
-        take: limit,
-        orderBy: {
-          date: 'desc',
-        },
-      }),
-      this.prisma.transaction.count({
-        where: whereClause,
-      }),
-    ]);
-    const totalPages = Math.ceil(total / limit);
-    const mappedTransactions = await Promise.all(
-      transactions.map((transaction) => this.mapToTransactionType(transaction)),
-    );
-    return {
-      data: mappedTransactions,
       page,
       limit,
-      total,
-      totalPages,
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1,
-    };
+    );
   }
 
-  /**
-   * Fetches all income transactions for a user with pagination and optional month filtering.
-   * - If year and month are provided: filters by that specific month
-   * - If only month is provided: uses current year with the specified month
-   * - If neither is provided: returns all income transactions (no month filter)
-   */
   async getIncome(
     userId: string,
     queryDto: GetIncomeQueryDto,
   ): Promise<PaginatedTransactions> {
-    const page = queryDto.page ?? 1;
-    const limit = queryDto.limit ?? 20;
-    const skip = (page - 1) * limit;
-    const now = new Date();
-    let year = queryDto.year;
-    let month = queryDto.month;
-    if (year && !month) {
-      throw new BadRequestException('Month is required when year is provided');
-    }
-    if (month && !year) {
-      year = now.getFullYear();
-    }
-    const whereClause: any = {
-      userId,
-      type: TransactionType.INCOME,
-    };
-    if (year && month) {
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
-      whereClause.date = {
-        gte: startDate,
-        lte: endDate,
-      };
-    }
-    const [transactions, total] = await Promise.all([
-      this.prisma.transaction.findMany({
-        where: whereClause,
-        skip,
-        take: limit,
-        orderBy: {
-          date: 'desc',
-        },
-      }),
-      this.prisma.transaction.count({
-        where: whereClause,
-      }),
-    ]);
-    const totalPages = Math.ceil(total / limit);
-    const mappedTransactions = await Promise.all(
-      transactions.map((transaction) => this.mapToTransactionType(transaction)),
-    );
-    return {
-      data: mappedTransactions,
-      page,
-      limit,
-      total,
-      totalPages,
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1,
-    };
+    return this.transactionQueryService.getIncome(userId, queryDto);
   }
 
-  /**
-   * Fetches income transactions for the current month with pagination.
-   */
   async getCurrentMonthIncome(
     userId: string,
     page: number = 1,
     limit: number = 20,
   ): Promise<PaginatedTransactions> {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
-    const skip = (page - 1) * limit;
-    const whereClause = {
+    return this.transactionQueryService.getCurrentMonthIncome(
       userId,
-      type: TransactionType.INCOME,
-      date: {
-        gte: startDate,
-        lte: endDate,
-      },
-    };
-    const [transactions, total] = await Promise.all([
-      this.prisma.transaction.findMany({
-        where: whereClause,
-        skip,
-        take: limit,
-        orderBy: {
-          date: 'desc',
-        },
-      }),
-      this.prisma.transaction.count({
-        where: whereClause,
-      }),
-    ]);
-    const totalPages = Math.ceil(total / limit);
-    const mappedTransactions = await Promise.all(
-      transactions.map((transaction) => this.mapToTransactionType(transaction)),
-    );
-    return {
-      data: mappedTransactions,
       page,
       limit,
-      total,
-      totalPages,
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1,
-    };
+    );
   }
 
-  /**
-   * Fetches all bill transactions for a user with pagination and optional month filtering.
-   * - If year and month are provided: filters by that specific month
-   * - If only month is provided: uses current year with the specified month
-   * - If neither is provided: returns all bill transactions (no month filter)
-   */
   async getBills(
     userId: string,
     queryDto: GetBillsQueryDto,
   ): Promise<PaginatedTransactions> {
-    const page = queryDto.page ?? 1;
-    const limit = queryDto.limit ?? 20;
-    const skip = (page - 1) * limit;
-    const now = new Date();
-    let year = queryDto.year;
-    let month = queryDto.month;
-    if (year && !month) {
-      throw new BadRequestException('Month is required when year is provided');
-    }
-    if (month && !year) {
-      year = now.getFullYear();
-    }
-    const whereClause: any = {
-      userId,
-      type: TransactionType.BILL,
-    };
-    if (year && month) {
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
-      whereClause.date = {
-        gte: startDate,
-        lte: endDate,
-      };
-    }
-    const [transactions, total] = await Promise.all([
-      this.prisma.transaction.findMany({
-        where: whereClause,
-        skip,
-        take: limit,
-        orderBy: {
-          date: 'desc',
-        },
-      }),
-      this.prisma.transaction.count({
-        where: whereClause,
-      }),
-    ]);
-    const totalPages = Math.ceil(total / limit);
-    const mappedTransactions = await Promise.all(
-      transactions.map((transaction) => this.mapToTransactionType(transaction)),
-    );
-    return {
-      data: mappedTransactions,
-      page,
-      limit,
-      total,
-      totalPages,
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1,
-    };
+    return this.transactionQueryService.getBills(userId, queryDto);
   }
 
-  /**
-   * Fetches bill transactions for the current month with pagination.
-   */
   async getCurrentMonthBills(
     userId: string,
     page: number = 1,
     limit: number = 20,
   ): Promise<PaginatedTransactions> {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
-    const skip = (page - 1) * limit;
-    const whereClause = {
+    return this.transactionQueryService.getCurrentMonthBills(
       userId,
-      type: TransactionType.BILL,
-      date: {
-        gte: startDate,
-        lte: endDate,
-      },
-    };
-    const [transactions, total] = await Promise.all([
-      this.prisma.transaction.findMany({
-        where: whereClause,
-        skip,
-        take: limit,
-        orderBy: {
-          date: 'desc',
-        },
-      }),
-      this.prisma.transaction.count({
-        where: whereClause,
-      }),
-    ]);
-    const totalPages = Math.ceil(total / limit);
-    const mappedTransactions = await Promise.all(
-      transactions.map((transaction) => this.mapToTransactionType(transaction)),
-    );
-    return {
-      data: mappedTransactions,
       page,
       limit,
-      total,
-      totalPages,
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1,
-    };
+    );
   }
 
-  /**
-   * Fetches all subscription transactions for a user with pagination and optional month filtering.
-   * - If year and month are provided: filters by that specific month
-   * - If only month is provided: uses current year with the specified month
-   * - If neither is provided: returns all subscription transactions (no month filter)
-   */
   async getSubscriptions(
     userId: string,
     queryDto: GetSubscriptionsQueryDto,
   ): Promise<PaginatedTransactions> {
-    const page = queryDto.page ?? 1;
-    const limit = queryDto.limit ?? 20;
-    const skip = (page - 1) * limit;
-    const now = new Date();
-    let year = queryDto.year;
-    let month = queryDto.month;
-    if (year && !month) {
-      throw new BadRequestException('Month is required when year is provided');
-    }
-    if (month && !year) {
-      year = now.getFullYear();
-    }
-    const whereClause: any = {
-      userId,
-      type: TransactionType.SUBSCRIPTION,
-    };
-    if (year && month) {
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
-      whereClause.date = {
-        gte: startDate,
-        lte: endDate,
-      };
-    }
-    const [transactions, total] = await Promise.all([
-      this.prisma.transaction.findMany({
-        where: whereClause,
-        skip,
-        take: limit,
-        orderBy: {
-          date: 'desc',
-        },
-      }),
-      this.prisma.transaction.count({
-        where: whereClause,
-      }),
-    ]);
-    const totalPages = Math.ceil(total / limit);
-    const mappedTransactions = await Promise.all(
-      transactions.map((transaction) => this.mapToTransactionType(transaction)),
-    );
-    return {
-      data: mappedTransactions,
-      page,
-      limit,
-      total,
-      totalPages,
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1,
-    };
+    return this.transactionQueryService.getSubscriptions(userId, queryDto);
   }
 
-  /**
-   * Fetches subscription transactions for the current month with pagination.
-   */
   async getCurrentMonthSubscriptions(
     userId: string,
     page: number = 1,
     limit: number = 20,
   ): Promise<PaginatedTransactions> {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
-    const skip = (page - 1) * limit;
-    const whereClause = {
+    return this.transactionQueryService.getCurrentMonthSubscriptions(
       userId,
-      type: TransactionType.SUBSCRIPTION,
-      date: {
-        gte: startDate,
-        lte: endDate,
-      },
-    };
-    const [transactions, total] = await Promise.all([
-      this.prisma.transaction.findMany({
-        where: whereClause,
-        skip,
-        take: limit,
-        orderBy: {
-          date: 'desc',
-        },
-      }),
-      this.prisma.transaction.count({
-        where: whereClause,
-      }),
-    ]);
-    const totalPages = Math.ceil(total / limit);
-    const mappedTransactions = await Promise.all(
-      transactions.map((transaction) => this.mapToTransactionType(transaction)),
-    );
-    return {
-      data: mappedTransactions,
       page,
       limit,
-      total,
-      totalPages,
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1,
-    };
+    );
   }
 
-  /**
-   * Fetches all savings transactions for a user with pagination and optional month filtering.
-   * - If year and month are provided: filters by that specific month
-   * - If only month is provided: uses current year with the specified month
-   * - If neither is provided: returns all savings transactions (no month filter)
-   */
   async getSavings(
     userId: string,
     queryDto: GetSavingsQueryDto,
   ): Promise<PaginatedTransactions> {
-    const page = queryDto.page ?? 1;
-    const limit = queryDto.limit ?? 20;
-    const skip = (page - 1) * limit;
-    const now = new Date();
-    let year = queryDto.year;
-    let month = queryDto.month;
-    if (year && !month) {
-      throw new BadRequestException('Month is required when year is provided');
-    }
-    if (month && !year) {
-      year = now.getFullYear();
-    }
-    const whereClause: any = {
-      userId,
-      type: TransactionType.SAVINGS,
-    };
-    if (year && month) {
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
-      whereClause.date = {
-        gte: startDate,
-        lte: endDate,
-      };
-    }
-    const [transactions, total] = await Promise.all([
-      this.prisma.transaction.findMany({
-        where: whereClause,
-        skip,
-        take: limit,
-        orderBy: {
-          date: 'desc',
-        },
-      }),
-      this.prisma.transaction.count({
-        where: whereClause,
-      }),
-    ]);
-    const totalPages = Math.ceil(total / limit);
-    const mappedTransactions = await Promise.all(
-      transactions.map((transaction) => this.mapToTransactionType(transaction)),
-    );
-    return {
-      data: mappedTransactions,
-      page,
-      limit,
-      total,
-      totalPages,
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1,
-    };
+    return this.transactionQueryService.getSavings(userId, queryDto);
   }
 
-  /**
-   * Gets a list of distinct months (year + month) in which the user has any transaction.
-   * Returns the months sorted by date descending (newest first).
-   */
   async getAvailableMonths(userId: string): Promise<MonthYear[]> {
-    const results = await this.prisma.$queryRaw<
-      Array<{ year: number | bigint; month: number | bigint }>
-    >`
-      SELECT DISTINCT
-        EXTRACT(YEAR FROM date)::INTEGER as year,
-        EXTRACT(MONTH FROM date)::INTEGER as month
-      FROM "Transaction"
-      WHERE "userId" = ${userId}
-      ORDER BY year DESC, month DESC
-    `;
-    return results.map((row) => ({
-      year: Number(row.year),
-      month: Number(row.month),
-    }));
-  }
-
-  private isDateInMonth(date: Date, year: number, month: number): boolean {
-    return date.getFullYear() === year && date.getMonth() === month - 1;
-  }
-
-  /**
-   * Calculates the occurrence number for a recurring transaction instance.
-   * Returns null if the transaction is not part of a recurring series with a defined count or deadline.
-   *
-   * @param transaction - The transaction (can be parent or child)
-   * @param parentTransaction - The parent transaction with recurrence info
-   * @param allSiblings - All sibling transactions (including parent) ordered by date
-   * @returns Occurrence number string (e.g., "1/12") or null
-   */
-  private calculateOccurrenceNumber(
-    transaction: any,
-    parentTransaction: any | null,
-    allSiblings: any[],
-  ): string | null {
-    if (!parentTransaction) {
-      return null;
-    }
-    const hasRecurrenceCount =
-      parentTransaction.recurrenceCount !== null &&
-      parentTransaction.recurrenceCount !== undefined;
-    const hasRecurrenceEndDate =
-      parentTransaction.recurrenceEndDate !== null &&
-      parentTransaction.recurrenceEndDate !== undefined;
-    if (!hasRecurrenceCount && !hasRecurrenceEndDate) {
-      return null;
-    }
-    const sortedSiblings = [...allSiblings].sort(
-      (a, b) => a.date.getTime() - b.date.getTime(),
-    );
-    const currentIndex = sortedSiblings.findIndex(
-      (sibling) => sibling.id === transaction.id,
-    );
-    if (currentIndex === -1) {
-      return null;
-    }
-    const occurrenceNumber = currentIndex + 1;
-    let totalOccurrences: number | null = null;
-    if (hasRecurrenceCount) {
-      totalOccurrences = Number(parentTransaction.recurrenceCount);
-      if (isNaN(totalOccurrences) || totalOccurrences <= 0) {
-        return null;
-      }
-    } else if (
-      hasRecurrenceEndDate &&
-      parentTransaction.recurrence &&
-      parentTransaction.recurrenceEndDate
-    ) {
-      const startDate = parentTransaction.date;
-      const endDate = parentTransaction.recurrenceEndDate;
-      const recurrence = parentTransaction.recurrence;
-      totalOccurrences = this.calculateTotalOccurrencesFromEndDate(
-        startDate,
-        endDate,
-        recurrence,
-      );
-    }
-    if (totalOccurrences === null || totalOccurrences === undefined) {
-      return null;
-    }
-    return `${occurrenceNumber}/${totalOccurrences}`;
-  }
-
-  /**
-   * Calculates the total number of occurrences from a start date to an end date based on recurrence pattern.
-   */
-  private calculateTotalOccurrencesFromEndDate(
-    startDate: Date,
-    endDate: Date,
-    recurrence: Recurrence,
-  ): number {
-    let count = 1;
-    let occurrenceNumber = 1;
-    let currentDate = new Date(startDate);
-    const end = new Date(endDate);
-    while (currentDate <= end) {
-      const nextDate = calculateNextRecurrenceDate(
-        startDate,
-        recurrence,
-        occurrenceNumber + 1,
-      );
-      if (nextDate <= end) {
-        count++;
-        occurrenceNumber++;
-        currentDate = nextDate;
-      } else {
-        break;
-      }
-    }
-    return count;
-  }
-
-  private async mapToTransactionType(transaction: any): Promise<Transaction> {
-    let occurrenceNumber: string | null = null;
-    if (transaction.parentTransactionId) {
-      const parentTransaction = await this.prisma.transaction.findUnique({
-        where: { id: transaction.parentTransactionId },
-      });
-      if (parentTransaction) {
-        const allSiblings = await this.prisma.transaction.findMany({
-          where: {
-            OR: [
-              { id: transaction.parentTransactionId },
-              { parentTransactionId: transaction.parentTransactionId },
-            ],
-          },
-          orderBy: { date: 'asc' },
-        });
-        occurrenceNumber = this.calculateOccurrenceNumber(
-          transaction,
-          parentTransaction,
-          allSiblings,
-        );
-      }
-    } else if (
-      transaction.recurrence &&
-      ((transaction.recurrenceCount !== null &&
-        transaction.recurrenceCount !== undefined) ||
-        (transaction.recurrenceEndDate !== null &&
-          transaction.recurrenceEndDate !== undefined))
-    ) {
-      const allSiblings = await this.prisma.transaction.findMany({
-        where: {
-          OR: [{ id: transaction.id }, { parentTransactionId: transaction.id }],
-        },
-        orderBy: { date: 'asc' },
-      });
-      occurrenceNumber = this.calculateOccurrenceNumber(
-        transaction,
-        transaction,
-        allSiblings,
-      );
-    }
-    return {
-      id: transaction.id,
-      userId: transaction.userId,
-      label: transaction.label,
-      date: transaction.date,
-      value: Number(transaction.value),
-      type: transaction.type,
-      categoryId: transaction.categoryId,
-      goalId: transaction.goalId,
-      recurrence: transaction.recurrence,
-      recurrenceEndDate: transaction.recurrenceEndDate,
-      recurrenceCount: transaction.recurrenceCount,
-      parentTransactionId: transaction.parentTransactionId,
-      occurrenceNumber,
-      isPaid: transaction.isPaid,
-      isAuto: transaction.isAuto ?? null,
-      createdAt: transaction.createdAt,
-      updatedAt: transaction.updatedAt,
-    };
+    return this.transactionQueryService.getAvailableMonths(userId);
   }
 }
