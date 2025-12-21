@@ -281,7 +281,7 @@ export class TransactionCreationService {
         ? createSavingDto.isPaid
         : isAuto
           ? true
-          : true;
+          : false;
     const parentTransaction = await this.prisma.transaction.create({
       data: {
         userId,
@@ -297,7 +297,13 @@ export class TransactionCreationService {
         isAuto,
       } as any,
     });
-    let instancesCount = 1;
+    if (isPaid) {
+      await this.savingsGoalIntegrationService.addToSavingsGoal(
+        createSavingDto.goalId,
+        createSavingDto.value,
+        1,
+      );
+    }
     if (createSavingDto.recurrence) {
       const maxOccurrences = createSavingDto.recurrenceCount
         ? createSavingDto.recurrenceCount - 1
@@ -324,14 +330,15 @@ export class TransactionCreationService {
             isAuto,
           })),
         });
-        instancesCount += futureDates.length;
+        if (isPaid) {
+          await this.savingsGoalIntegrationService.addToSavingsGoal(
+            createSavingDto.goalId,
+            createSavingDto.value,
+            futureDates.length,
+          );
+        }
       }
     }
-    await this.savingsGoalIntegrationService.addToSavingsGoal(
-      createSavingDto.goalId,
-      createSavingDto.value,
-      instancesCount,
-    );
     await this.monthlyBalanceService.invalidateMonthlyBalanceForDate(
       userId,
       transactionDate,

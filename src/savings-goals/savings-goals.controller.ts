@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Request,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -21,15 +22,15 @@ import { CreateSavingsGoalDto } from './models/create-savings-goal.dto';
 import { UpdateSavingsGoalDto } from './models/update-savings-goal.dto';
 import { SavingsGoal } from './models/savings-goal.type';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Transaction } from '../transactions/models/types/transaction.type';
+import { GetSavingsGoalTransactionsQueryDto } from './models/get-savings-goal-transactions-query.dto';
 
 @ApiTags('savings-goals')
 @Controller('savings-goals')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('JWT-auth')
 export class SavingsGoalsController {
-  constructor(
-    private readonly savingsGoalsService: SavingsGoalsService,
-  ) {}
+  constructor(private readonly savingsGoalsService: SavingsGoalsService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new savings goal' })
@@ -44,10 +45,7 @@ export class SavingsGoalsController {
     @Request() req: { user: { id: string; email: string } },
     @Body() createSavingsGoalDto: CreateSavingsGoalDto,
   ): Promise<SavingsGoal> {
-    return this.savingsGoalsService.create(
-      req.user.id,
-      createSavingsGoalDto,
-    );
+    return this.savingsGoalsService.create(req.user.id, createSavingsGoalDto);
   }
 
   @Get()
@@ -62,6 +60,32 @@ export class SavingsGoalsController {
     @Request() req: { user: { id: string; email: string } },
   ): Promise<SavingsGoal[]> {
     return this.savingsGoalsService.findAll(req.user.id);
+  }
+
+  @Get(':id/transactions')
+  @ApiOperation({
+    summary: 'Get all transactions for a savings goal',
+    description:
+      'Returns transactions for a savings goal. Optionally filter by month and/or year using query parameters.',
+  })
+  @ApiParam({ name: 'id', description: 'Savings goal ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of transactions for the savings goal',
+    type: [Transaction],
+  })
+  @ApiResponse({ status: 404, description: 'Savings goal not found' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request (e.g., year provided without month)',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getTransactions(
+    @Request() req: { user: { id: string; email: string } },
+    @Param('id') id: string,
+    @Query() queryDto: GetSavingsGoalTransactionsQueryDto,
+  ): Promise<Transaction[]> {
+    return this.savingsGoalsService.getTransactions(req.user.id, id, queryDto);
   }
 
   @Get(':id')
@@ -122,9 +146,11 @@ export class SavingsGoalsController {
 
   @Get('admin/test')
   @ApiOperation({ summary: 'Test savings goals module' })
-  @ApiResponse({ status: 200, description: 'Savings goals module is working correctly' })
+  @ApiResponse({
+    status: 200,
+    description: 'Savings goals module is working correctly',
+  })
   test() {
     return { message: 'Savings goals module is working correctly' };
   }
 }
-

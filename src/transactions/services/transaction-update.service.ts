@@ -70,6 +70,26 @@ export class TransactionUpdateService {
     }
     if (updateTransactionDto.isPaid !== undefined) {
       data.isPaid = updateTransactionDto.isPaid;
+      if (
+        existingTransaction.type === TransactionType.SAVINGS &&
+        existingTransaction.goalId
+      ) {
+        const transactionValue = Number(existingTransaction.value);
+        const currentIsPaid = existingTransaction.isPaid ?? false;
+        const newIsPaid = updateTransactionDto.isPaid;
+        if (!currentIsPaid && newIsPaid) {
+          await this.savingsGoalIntegrationService.addToSavingsGoal(
+            existingTransaction.goalId,
+            transactionValue,
+            1,
+          );
+        } else if (currentIsPaid && !newIsPaid) {
+          await this.savingsGoalIntegrationService.subtractFromSavingsGoal(
+            existingTransaction.goalId,
+            transactionValue,
+          );
+        }
+      }
     }
     if (updateTransactionDto.recurrenceEndDate !== undefined) {
       data.recurrenceEndDate = updateTransactionDto.recurrenceEndDate
@@ -82,11 +102,14 @@ export class TransactionUpdateService {
       existingTransaction.goalId
     ) {
       const existingValue = Number(existingTransaction.value);
-      await this.savingsGoalIntegrationService.updateSavingsGoalAmount(
-        existingTransaction.goalId,
-        existingValue,
-        updateTransactionDto.value,
-      );
+      const currentIsPaid = existingTransaction.isPaid ?? false;
+      if (currentIsPaid) {
+        await this.savingsGoalIntegrationService.updateSavingsGoalAmount(
+          existingTransaction.goalId,
+          existingValue,
+          updateTransactionDto.value,
+        );
+      }
     }
     const recurringData: any = { ...data };
     delete recurringData.date;
@@ -157,9 +180,58 @@ export class TransactionUpdateService {
       );
     }
     const isPaid = isAuto ? true : false;
+    const currentIsPaid = existingTransaction.isPaid ?? false;
     const isRecurringParent =
       existingTransaction.recurrence !== null &&
       !existingTransaction.parentTransactionId;
+    if (
+      existingTransaction.type === TransactionType.SAVINGS &&
+      existingTransaction.goalId &&
+      currentIsPaid !== isPaid
+    ) {
+      const transactionValue = Number(existingTransaction.value);
+      if (isRecurringParent) {
+        const affectedTransactions = await this.prisma.transaction.findMany({
+          where: {
+            OR: [{ id }, { parentTransactionId: id }],
+          },
+        });
+        const savingsTransactions = affectedTransactions.filter(
+          (t) => t.goalId === existingTransaction.goalId,
+        );
+        if (isPaid) {
+          const currentlyUnpaidTransactions = savingsTransactions.filter(
+            (t) => !(t.isPaid ?? false),
+          );
+          await this.savingsGoalIntegrationService.addToSavingsGoal(
+            existingTransaction.goalId!,
+            transactionValue,
+            currentlyUnpaidTransactions.length,
+          );
+        } else {
+          const currentlyPaidTransactions = savingsTransactions.filter(
+            (t) => t.isPaid ?? false,
+          );
+          await this.savingsGoalIntegrationService.subtractFromSavingsGoal(
+            existingTransaction.goalId!,
+            transactionValue * currentlyPaidTransactions.length,
+          );
+        }
+      } else {
+        if (isPaid) {
+          await this.savingsGoalIntegrationService.addToSavingsGoal(
+            existingTransaction.goalId!,
+            transactionValue,
+            1,
+          );
+        } else {
+          await this.savingsGoalIntegrationService.subtractFromSavingsGoal(
+            existingTransaction.goalId!,
+            transactionValue,
+          );
+        }
+      }
+    }
     if (isRecurringParent) {
       await this.prisma.transaction.updateMany({
         where: {

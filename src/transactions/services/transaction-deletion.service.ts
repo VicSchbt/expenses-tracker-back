@@ -63,7 +63,8 @@ export class TransactionDeletionService {
     }
     if (
       existingTransaction.type === TransactionType.SAVINGS &&
-      existingTransaction.goalId
+      existingTransaction.goalId &&
+      (existingTransaction.isPaid ?? false)
     ) {
       const existingValue = Number(existingTransaction.value);
       await this.savingsGoalIntegrationService.subtractFromSavingsGoal(

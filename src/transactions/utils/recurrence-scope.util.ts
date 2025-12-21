@@ -44,19 +44,47 @@ export async function handleRecurrenceScopeUpdate(
 
     if (
       existingTransaction.type === TransactionType.SAVINGS &&
-      updateValue !== undefined &&
       existingTransaction.goalId
     ) {
-      const existingValue = Number(existingTransaction.value);
-      const affectedCount = affectedTransactions.filter(
+      const transactionValue = Number(existingTransaction.value);
+      const savingsTransactions = affectedTransactions.filter(
         (t) => t.goalId === existingTransaction.goalId,
-      ).length;
-      await savingsGoalIntegrationService.updateSavingsGoalForMultipleTransactions(
-        existingTransaction.goalId!,
-        existingValue,
-        updateValue,
-        affectedCount,
       );
+      const newIsPaid = recurringData.isPaid;
+      if (newIsPaid !== undefined) {
+        const currentlyPaidTransactions = savingsTransactions.filter(
+          (t) => t.isPaid ?? false,
+        );
+        const currentlyUnpaidTransactions = savingsTransactions.filter(
+          (t) => !(t.isPaid ?? false),
+        );
+        if (newIsPaid) {
+          await savingsGoalIntegrationService.addToSavingsGoal(
+            existingTransaction.goalId!,
+            transactionValue,
+            currentlyUnpaidTransactions.length,
+          );
+        } else {
+          await savingsGoalIntegrationService.subtractFromSavingsGoal(
+            existingTransaction.goalId!,
+            transactionValue * currentlyPaidTransactions.length,
+          );
+        }
+      }
+      if (updateValue !== undefined) {
+        const existingValue = Number(existingTransaction.value);
+        const currentlyPaidTransactions = savingsTransactions.filter(
+          (t) => t.isPaid ?? false,
+        );
+        if (currentlyPaidTransactions.length > 0) {
+          await savingsGoalIntegrationService.updateSavingsGoalForMultipleTransactions(
+            existingTransaction.goalId!,
+            existingValue,
+            updateValue,
+            currentlyPaidTransactions.length,
+          );
+        }
+      }
     }
 
     await prisma.transaction.updateMany({
@@ -80,19 +108,47 @@ export async function handleRecurrenceScopeUpdate(
 
     if (
       existingTransaction.type === TransactionType.SAVINGS &&
-      updateValue !== undefined &&
       existingTransaction.goalId
     ) {
-      const existingValue = Number(existingTransaction.value);
-      const affectedCount = affectedTransactions.filter(
+      const transactionValue = Number(existingTransaction.value);
+      const savingsTransactions = affectedTransactions.filter(
         (t) => t.goalId === existingTransaction.goalId,
-      ).length;
-      await savingsGoalIntegrationService.updateSavingsGoalForMultipleTransactions(
-        existingTransaction.goalId!,
-        existingValue,
-        updateValue,
-        affectedCount,
       );
+      const newIsPaid = recurringData.isPaid;
+      if (newIsPaid !== undefined) {
+        const currentlyPaidTransactions = savingsTransactions.filter(
+          (t) => t.isPaid ?? false,
+        );
+        const currentlyUnpaidTransactions = savingsTransactions.filter(
+          (t) => !(t.isPaid ?? false),
+        );
+        if (newIsPaid) {
+          await savingsGoalIntegrationService.addToSavingsGoal(
+            existingTransaction.goalId!,
+            transactionValue,
+            currentlyUnpaidTransactions.length,
+          );
+        } else {
+          await savingsGoalIntegrationService.subtractFromSavingsGoal(
+            existingTransaction.goalId!,
+            transactionValue * currentlyPaidTransactions.length,
+          );
+        }
+      }
+      if (updateValue !== undefined) {
+        const existingValue = Number(existingTransaction.value);
+        const currentlyPaidTransactions = savingsTransactions.filter(
+          (t) => t.isPaid ?? false,
+        );
+        if (currentlyPaidTransactions.length > 0) {
+          await savingsGoalIntegrationService.updateSavingsGoalForMultipleTransactions(
+            existingTransaction.goalId!,
+            existingValue,
+            updateValue,
+            currentlyPaidTransactions.length,
+          );
+        }
+      }
     }
 
     await prisma.transaction.updateMany({
@@ -173,11 +229,12 @@ export async function handleRecurrenceScopeDelete(
     };
   }
 
-  const savingsTransactions = transactionsToDelete.filter(
-    (t) => t.type === TransactionType.SAVINGS && t.goalId,
+  const paidSavingsTransactions = transactionsToDelete.filter(
+    (t) =>
+      t.type === TransactionType.SAVINGS && t.goalId && (t.isPaid ?? false),
   );
   await savingsGoalIntegrationService.removeFromSavingsGoalsForTransactions(
-    savingsTransactions.map((t) => ({
+    paidSavingsTransactions.map((t) => ({
       goalId: t.goalId,
       value: Number(t.value),
     })),

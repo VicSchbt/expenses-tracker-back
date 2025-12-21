@@ -115,7 +115,11 @@ export class RecurringTransactionsScheduler {
             })),
           });
           generatedCount += futureDates.length;
-          if (parent.type === 'SAVINGS' && parent.goalId) {
+          if (
+            parent.type === 'SAVINGS' &&
+            parent.goalId &&
+            (parent.isPaid ?? false)
+          ) {
             await this.prisma.savingsGoal.update({
               where: { id: parent.goalId },
               data: {
