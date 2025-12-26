@@ -1,0 +1,26 @@
+meta {
+  name: update-category
+  type: http
+  seq: 2
+}
+
+patch {
+  url: {{URL}}/categories/cmimnvw9s0001ss61sah8cb1g
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+body:json {
+  {
+    "budget": 20
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
