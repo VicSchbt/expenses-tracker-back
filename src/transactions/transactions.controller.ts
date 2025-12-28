@@ -38,6 +38,7 @@ import { GetSavingsQueryDto } from './models/dtos/query/get-savings-query.dto';
 import { UpdateTransactionDto } from './models/dtos/update/update-transaction.dto';
 import { DeleteTransactionQueryDto } from './models/dtos/query/delete-transaction-query.dto';
 import { UpdateIsAutoDto } from './models/dtos/update/update-is-auto.dto';
+import { GetRecentTransactionsQueryDto } from './models/dtos/query/get-recent-transactions-uery.dto';
 
 @ApiTags('transactions')
 @Controller('transactions')
@@ -197,6 +198,33 @@ export class TransactionsController {
       req.user.id,
       pageNumber,
       limitNumber,
+    );
+  }
+
+  // Add this route method (I recommend placing it near the top of the controller, perhaps after line 63)
+  @Get('recent')
+  @ApiOperation({
+    summary: 'Get recent transactions',
+    description:
+      'Fetches the most recent transactions for the user with pagination. Returns all transaction types ordered by date descending (newest first).',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Recent transactions successfully retrieved',
+    type: PaginatedTransactions,
+  })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getRecentTransactions(
+    @Request() req: { user: { id: string; email: string } },
+    @Query() queryDto: GetRecentTransactionsQueryDto,
+  ): Promise<PaginatedTransactions> {
+    const page = queryDto.page ?? 1;
+    const limit = queryDto.limit ?? 20;
+    return this.transactionsService.getRecentTransactions(
+      req.user.id,
+      page,
+      limit,
     );
   }
 

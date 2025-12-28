@@ -269,4 +269,24 @@ export class TransactionQueryService {
       month: Number(row.month),
     }));
   }
+
+  /**
+   * Fetches the most recent transactions for a user with pagination.
+   * Returns all transaction types ordered by date descending.
+   */
+  async getRecentTransactions(
+    userId: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<PaginatedTransactions> {
+    const whereClause = {
+      userId,
+    };
+    return executePaginatedTransactionQuery(
+      this.prisma,
+      whereClause,
+      page,
+      limit,
+    );
+  }
 }

@@ -1,0 +1,20 @@
+meta {
+  name: recents
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{URL}}/transactions/recent
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

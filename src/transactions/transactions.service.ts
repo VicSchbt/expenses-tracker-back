@@ -237,4 +237,20 @@ export class TransactionsService {
   async getAvailableMonths(userId: string): Promise<MonthYear[]> {
     return this.transactionQueryService.getAvailableMonths(userId);
   }
+
+  /**
+   * Fetches the most recent transactions for a user with pagination.
+   * Returns all transaction types ordered by date descending.
+   */
+  async getRecentTransactions(
+    userId: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<PaginatedTransactions> {
+    return this.transactionQueryService.getRecentTransactions(
+      userId,
+      page,
+      limit,
+    );
+  }
 }
